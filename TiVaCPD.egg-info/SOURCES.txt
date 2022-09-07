@@ -1,0 +1,17 @@
+LICENSE
+README.md
+setup.py
+TiVaCPD/__init__.py
+TiVaCPD/cpd_methods.py
+TiVaCPD/distribution_changes.py
+TiVaCPD/exp_2.py
+TiVaCPD/experiments.py
+TiVaCPD/load_data.py
+TiVaCPD/main.py
+TiVaCPD/performance.py
+TiVaCPD/simulate.py
+TiVaCPD/tvgl.py
+TiVaCPD.egg-info/PKG-INFO
+TiVaCPD.egg-info/SOURCES.txt
+TiVaCPD.egg-info/dependency_links.txt
+TiVaCPD.egg-info/top_level.txt
