@@ -20,13 +20,14 @@ def main():
     # load the data
     if args.data_type in ['simulated_data', 'simulated']:
         data_path = args.data_path
-        X, gt_corr, gt_var, gt_mean = load_simulated(data_path)
+        ind = args.ind
+        X, gt_corr, gt_var, gt_mean = load_simulated(data_path, ind)
     elif args.data_type in ['har', 'HAR']:
         data_path = args.data_path
-        X, y = load_har(data_path)
+        X, y = load_har(data_path, ind)
     else:
         data_path = args.data_path
-        X = load_real(data_path)
+        X = load_real(data_path, ind)
 
     # results path
     if not os.path.exists(os.path.join(args.out_path, args.exp)):
@@ -91,6 +92,7 @@ if __name__=='__main__':
     parser.add_argument('--exp', default = '3')
     parser.add_argument('--model_type', default = 'MMDATVGL_CPD')
     parser.add_argument('--max_iter', type = int, default = 500)
+    parser.add_argument('--ind', type = int, default = 0)
 
     args = parser.parse_args()
 
