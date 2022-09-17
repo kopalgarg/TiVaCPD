@@ -26,8 +26,8 @@ class ComputeMetrics():
         self.threshold = threshold
         self.model_type=model_type
 
-        self.f1, self.precision, self.recall = self.ChangePointF1Score(self.y_true, self.y_pred, window=moe, threshold=self.threshold)
-        self.auc = self.get_auc(self.y_true, self.y_pred, self.model_type)
+        self.f1, self.precision, self.recall,self.auc  = self.ChangePointF1Score(self.y_true, self.y_pred, window=moe, threshold=self.threshold)
+        #self.auc = self.get_auc(self.y_true, self.y_pred, self.model_type)
         
 
     def ChangePointF1Score(self, y_true, y_pred, window, threshold):
@@ -85,7 +85,8 @@ class ComputeMetrics():
             precision=0
         if (totalGt==0):
             recall=0
-        return f1, precision, recall
+        auc_scores = auc(recall, precision)
+        return f1, precision, recall, auc_scores
 
     def peak_prominences_(self, distances):
         """
