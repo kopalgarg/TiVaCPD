@@ -1,7 +1,7 @@
 dataset='constant_var_mean'
 data_path='./data/constant_var_mean'
 
-python main.py --model_type 'MMDATVGL_CPD' --data_path  $data_path --exp $dataset
+python main.py --model_type 'MMDATVGL_CPD' --data_path  $data_path --exp $dataset 
 echo 'MMDATVGL_CPD done'
 python main.py --model_type 'KLCPD' --data_path $data_path --exp $dataset
 echo 'KLCPD done'
