@@ -89,25 +89,17 @@ def main():
     auc_scores = []
     f1_scores = []
 
-    for i in range(0,len(X_samples)):
+    for i in range(0,2):#len(X_samples)):
         print(i)
         if args.model_type == 'MMDATVGL_CPD':
             X = X_samples[i]
             y_true = y_true_samples[i]
 
-            if args.exp == 'changing_correlation':
-                model = MMDATVGL_CPD(X, max_iters = 1000, overlap=args.overlap, alpha = 0.001, threshold = 0.02)
-            elif args.exp == 'jumping_mean':
-                model = MMDATVGL_CPD(X, max_iters = 1000, overlap=args.overlap, alpha = 0.001, threshold = 0.05)
-            elif args.exp == 'changing_variance':
-                model = MMDATVGL_CPD(X, max_iters = 1000, overlap=args.overlap, alpha = 0.001, threshold = 0.03)
-            elif args.exp == 'HAR':
-                model = MMDATVGL_CPD(X, max_iters = 1000, overlap=args.overlap, alpha = 0.001,threshold = 0.005)
-            elif args.exp == 'beedance':
-                model = MMDATVGL_CPD(X, max_iters = 1000, overlap=args.overlap, alpha = 0.001, threshold = 0.01) 
+            model = MMDATVGL_CPD(X, max_iters = 1000, overlap=args.overlap, alpha = 0.001, threshold = 0.05) 
 
             mmd_score = shift(model.mmd_score, args.p_wnd_dim)
             corr_score = model.corr_score
+
             minLength = min(len(mmd_score), len(corr_score)) 
             corr_score = (corr_score/2)[:minLength]
             mmd_score = mmd_score[:minLength]
@@ -134,7 +126,6 @@ def main():
             print(metrics.f1)
             print(metrics.auc)
         
-
             y_pred = combined_score
             metrics = ComputeMetrics(y_true, y_pred, args.margin, 0.01)
             auc_scores_combined.append(metrics.auc)
@@ -162,6 +153,14 @@ def main():
             f1_scores.append(metrics.f1) 
             print(metrics.auc, metrics.f1)
             
+            data_path = os.path.join(args.out_path, args.exp)
+            if not os.path.exists(args.out_path): 
+                os.mkdir(args.out_path)
+            if not os.path.exists(data_path): 
+                os.mkdir(data_path)
+
+            save_data(os.path.join(data_path, ''.join(['graphtime_score_', str(i), '.pkl'])), y_pred)
+            
 
         elif args.model_type == 'KLCPD':
             X = X_samples[i]
@@ -171,7 +170,15 @@ def main():
 
             metrics = ComputeMetrics(y_true, y_pred, args.margin, args.threshold, model_type='KLCPD')
             auc_scores.append(metrics.auc)
-            f1_scores.append(metrics.f1) 
+            f1_scores.append(metrics.f1)
+
+            data_path = os.path.join(args.out_path, args.exp)
+            if not os.path.exists(args.out_path): 
+                os.mkdir(args.out_path)
+            if not os.path.exists(data_path): 
+                os.mkdir(data_path)
+
+            save_data(os.path.join(data_path, ''.join(['klcpd_score_', str(i), '.pkl'])), y_pred)
 
         elif args.model_type == 'roerich':
             X = X_samples[i]
@@ -185,6 +192,15 @@ def main():
             auc_scores.append(metrics.auc)
             f1_scores.append(metrics.f1) 
 
+            data_path = os.path.join(args.out_path, args.exp)
+            if not os.path.exists(args.out_path): 
+                os.mkdir(args.out_path)
+            if not os.path.exists(data_path): 
+                os.mkdir(data_path)
+
+            save_data(os.path.join(data_path, ''.join(['roerich_score_', str(i), '.pkl'])), y_pred)
+
+
     print(args.data_type, args.model_type, args.exp, args.score_type)
 
     if args.model_type == 'MMDATVGL_CPD':
@@ -197,7 +213,7 @@ def main():
         print("auc_scores_mmdagg_CI", mean_confidence_interval(auc_scores_mmdagg))
         print("f1_scores_mmdagg_CI", mean_confidence_interval(f1_scores_mmdagg))
     else:
-        print(args.data_type, args.model_type, args.exp, args.score_type)
+        print(args.data_type, args.model_type, args.exp)
         print("auc_CI", mean_confidence_interval(auc_scores))
         print("f1_CI", mean_confidence_interval(f1_scores))
 
@@ -205,15 +221,15 @@ def main():
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser(description='change point detection')
-    parser.add_argument('--data_path',  default='./data/beedance') # exact data dir, including the name of exp
+    parser.add_argument('--data_path',  default='./data/changing_correlation') # exact data dir, including the name of exp
     parser.add_argument('--out_path', default = './out') # just the main out directory
     parser.add_argument('--data_type', default = 'simulated_data') # others: beedance, HAR
     parser.add_argument('--max_iters', type = int, default = 1000)
     parser.add_argument('--overlap', type = int, default = 1)
-    parser.add_argument('--threshold', type = float, default = .05)
+    parser.add_argument('--threshold', type = float, default = .5)
     parser.add_argument('--f_wnd_dim', type = float, default = 10)
     parser.add_argument('--p_wnd_dim', type = float, default = 3)
-    parser.add_argument('--exp', default = '3') # used for output path for results
+    parser.add_argument('--exp', default = 'changing_correlation') # used for output path for results
     parser.add_argument('--model_type', default = 'MMDATVGL_CPD')
     parser.add_argument('--score_type', default='combined') # others: combined, correlation, mmdagg
     parser.add_argument('--margin', default = 5)
