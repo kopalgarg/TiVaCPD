@@ -1,7 +1,7 @@
 import numpy as np
 from median import compute_median_bandwidth_subset
 from weights import create_weights
-from kernel import kernel_matrices, mutate_K
+from kernel import kernel_matrices, mutate_K, normalized_kernel_matrices
 
 # Slightly modified
 
@@ -46,7 +46,7 @@ def mmdagg(
     weights = create_weights(N, weights_type)
     
     # compute the kernel matrices
-    kernel_matrices_list = kernel_matrices(
+    kernel_matrices_list = normalized_kernel_matrices(
         X, Y, kernel_type, median_bandwidth, bandwidth_multipliers
     ) 
 
@@ -120,6 +120,7 @@ def mmdagg_custom(
         V01[B1] = v01
         V01 = V01.transpose() 
         for i in range(N):
+            
             K = kernel_matrices_list[i]
             mutate_K(K, approx_type)
             M[i] = (
