@@ -17,6 +17,10 @@ from tvgl import *
 from load_data import *
 import matplotlib
 import torch
+from matplotlib import pyplot as plt
+from scipy.signal import savgol_filter
+import scipy.spatial.distance as sd
+
 
 sys.path.insert(1, './mmdagg/')
 from tests import *
@@ -374,8 +378,8 @@ class MMDA_CPD():
 # MMD Aggregate Change Point Detection, Time Varying GL
 class MMDATVGL_CPD():
     def __init__(self, series:np.array, p_wnd_dim:int=5, f_wnd_dim:int=10, threshold:int=.05, alpha:int=.05,
-    kernel_type='laplace', approx_type='permutation', B1:int=500, B2:int=500, B3:int=100, weights_type='uniform', l_minus:int=0, l_plus:int=4, 
-                                        alpha_:int=5, beta:int=10, penalty_type='L1', slice_size:int=10, overlap:int=1, max_iters:int=1500):
+    kernel_type='gaussian', approx_type='permutation', B1:int=1000, B2:int=1000, B3:int=100, weights_type='uniform', l_minus:int=1, l_plus:int=5, 
+                                        alpha_:int=0.4, beta:int=0.4, penalty_type='L2', slice_size:int=10, overlap:int=1, max_iters:int=500):
         """
         @param series - timeseries
         @param p_wnd_dim - past window size
@@ -423,7 +427,6 @@ class MMDATVGL_CPD():
 
         self.corr_score = self.TVGL_(series=self.series, alpha = self.alpha_, beta =self.beta, penalty_type=self.penalty_type,
                                             slice_size=self.slice_size, overlap=self.overlap, threshold=self.threshold, max_iters=self.max_iters)
-
         #self.scores = self.mmd_score + abs(self.corr_score)
 
     def dynamic_windowing(self, p_wnd_dim, f_wnd_dim, series, threshold, alpha, kernel_type, approx_type, B1, B2, B3, weight_type, l_minus, l_plus):
@@ -431,11 +434,13 @@ class MMDATVGL_CPD():
         mmd_agg = np.asarray([])
 
         run_length = int(p_wnd_dim)
-        i = p_wnd_dim
+        i = int(p_wnd_dim)
+        f_wnd_dim = int(f_wnd_dim)
+        p_wnd_dim = int(p_wnd_dim)
 
         while i <= len(series):
             prev = series[max(int(i)-run_length,0):int(i), :]
-            next = series[max(int(i),0):int(i)+f_wnd_dim, :]
+            next = series[max(int(i),0):int(i)+int(f_wnd_dim), :]
 
             if next.shape[0]<=2 or prev.shape[0]<=2:
                 break
@@ -450,9 +455,14 @@ class MMDATVGL_CPD():
                 run_length += 1
                 mmd_agg = np.concatenate((mmd_agg, np.repeat(0, 1)))
             i=i+1
-        mmd_agg = np.absolute(mmd_agg)
-        logit = (2./(1+np.exp(-3*(mmd_agg))))-1
+        #mmd_agg = np.absolute(mmd_agg)
 
+        # Min-max 
+        #mmd_agg /= np.max(np.abs(mmd_agg),axis=0)
+
+        logit = (2./(1+np.exp(-3*(mmd_agg))))-1
+        
+        
         return mmd_agg, logit
 
     def visualize_results(self, series, scores, scores2, gt_cov, gt_mean, gt_var, label, label2):
@@ -480,33 +490,82 @@ class MMDATVGL_CPD():
     
     def TVGL_(self, series, alpha, beta, penalty_type, slice_size, overlap, threshold, max_iters):
         
+        slice_size = 10
+
+        data = series
         model = TVGL(alpha, beta, penalty_type, slice_size, overlap=overlap, max_iters=max_iters)
 
         model.fit(series)
-        # set of precision matrice
+        # set of precision matrices
         
         ps = model.precision_set
-    
+        col_names = []
+        for i in range(ps[0].shape[0]-1,-1,-1):
+            for j in range(ps[0].shape[1]-1,-1,-1):
+                col_names.append((j,i))
+
+        df = pd.DataFrame(1.0, index=np.arange(len(data)), columns=col_names)
+
         corr_score = np.asarray([])
 
-        ps_inv = [np.linalg.inv(ps[0])]
-        for i in range(len(ps)):
-            #x = ((ps[i])-(ps[i-1]))
-            ps_inv_t = np.linalg.inv(ps[i])
-            x = self.correlation_from_covariance(ps_inv_t)- self.correlation_from_covariance(ps_inv[-1])
-            ps_inv.append(ps_inv_t)
-            #x = (numpy.linalg.inv(ps[i]))- (numpy.linalg.inv(ps[i-1]))
-            max_x = abs(x).max()
-            #max_x = max(x.min(), x.max(), key=abs)
-            #if abs(max_x) < 0:
-            #    max_x = 0
+        for k in range(len(ps)):
+
+            # average change in comparison to past 2 windows 
+            avg_ps=(ps[k-1] + ps[k-2])/2
+            a = ((ps[k])-avg_ps)
+
+            # Filter out noise
+            a[abs(a)<0.1]=0
+            a=np.tril(a, k=0)
+
+            for i in range(a.shape[0]-1,-1,-1):
+                for j in range(a.shape[1]-1,-1,-1):
+                    df[(j,i)][k] = a[i,j]
+
+            score = mat2vec(ps[k])-mat2vec(ps[k-1])
+
+            # Filter out noise
+            score[abs(score) < 0.1] = 0 
+            if abs(score.min()) > abs(score.max()):
+                max_x = score.min()
+            else:
+                max_x = score.max()
+
             corr_score=np.concatenate((corr_score, np.repeat(max_x, 1)))
             corr_score=np.concatenate((corr_score, np.repeat(0, overlap-1)))
 
-        if len(corr_score) > len(series):
-            corr_score=corr_score[:len(series)]
+        new_index = pd.RangeIndex(len(df)*(1))
+        new_df = pd.DataFrame(0.0, index=new_index, columns=df.columns)
+        ids = np.arange(len(df))*(1)
+        new_df.loc[ids] = df.values
+
+        sns.set_theme()
+        figure = plt.figure(figsize= (30,3))
+        new_df.loc[0] = 0
+        r = max(abs(np.amin(new_df.values)), abs(np.amax(new_df.values)))
+        vmin = -r
+        vmax = r
+        norm = matplotlib.colors.TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+        
+        ax = sns.heatmap(new_df.T, cmap="seismic", norm = norm)
+        ax2 = ax.twinx()
+        ax2.plot(data, lw=2)
+        corr_score[0]=0
+    
+        # Zero-padding to account for scaling 
+        if len(corr_score) > len(data):
+            corr_score=corr_score[:len(data)]
         else:
-            corr_score=np.concatenate((corr_score,np.zeros(int(series.shape[0]-len(corr_score)))))
+            corr_score=np.concatenate((corr_score, np.zeros(int(data.shape[0]-len(corr_score)))))
+        # Min-max scaling 
+        corr_score /= np.max(np.abs(corr_score),axis=0)
+        
+        #corr_score =  savgol_filter(corr_score, 7, 3)
+        
+        plt.plot(corr_score, color='black', label = 'corr_score')
+        plt.legend()
+        plt.show()
+        
         return corr_score
 
 
