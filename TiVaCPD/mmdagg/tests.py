@@ -2,8 +2,9 @@ import numpy as np
 from median import compute_median_bandwidth_subset
 from weights import create_weights
 from kernel import kernel_matrices, mutate_K, normalized_kernel_matrices
+from generalizedMean import *
 
-# Slightly modified
+#  - normalized kernel, MMD scoring updates 
 
 def mmdagg(
     seed, X, Y, alpha, kernel_type, approx_type, weights_type, l_minus, l_plus, B1, B2, B3
@@ -46,7 +47,7 @@ def mmdagg(
     weights = create_weights(N, weights_type)
     
     # compute the kernel matrices
-    kernel_matrices_list = normalized_kernel_matrices(
+    kernel_matrices_list = kernel_matrices(
         X, Y, kernel_type, median_bandwidth, bandwidth_multipliers
     ) 
 
@@ -100,6 +101,7 @@ def mmdagg_custom(
     M  = np.zeros((N, B1 + B2 + 1))  
     rs = np.random.RandomState(seed)
     if approx_type == "permutation":
+        
         idx = rs.rand(B1 + B2 + 1, m + n).argsort(axis=1)  # (B1+B2+1, m+n): rows of permuted indices
         #11
         v11 = np.concatenate((np.ones(m), -np.ones(n)))  # (m+n, )
@@ -122,12 +124,22 @@ def mmdagg_custom(
         for i in range(N):
             
             K = kernel_matrices_list[i]
+            temp = np.copy(K)
+            # normalized kernel - https://hal.archives-ouvertes.fr/hal-01504523/document
+            for x in range(0,K.shape[0]):
+                for y in range(0, K.shape[1]):
+                    # exponent for generalized mean
+                    t = 1
+                    K[x,y] = K[x,y]/generalizedMean(t, [temp[x,x],temp[y,y]])
+
             mutate_K(K, approx_type)
+            
             M[i] = (
                 np.sum(V10 * (K @ V10), 0) * (n - m + 1) / (m * n * (m - 1))
                 + np.sum(V01 * (K @ V01), 0) * (m - n + 1) / (m * n * (n - 1))
                 + np.sum(V11 * (K @ V11), 0) / (m * n)
             )  # (B1+B2+1, ) permuted MMD estimates
+            
     elif approx_type == "wild bootstrap":
         R = rs.choice([-1.0, 1.0], size=(B1 + B2 + 1, n))
         R[B1] = np.ones(n)
@@ -168,8 +180,8 @@ def mmdagg_custom(
             > M1_sorted[i, int(np.ceil((B1 + 1) * (1 - u * weights[i]))) - 1]
         ):
             return MMD_original[i]
+    
     return MMD_original[i]
-
 
 def mmd_median_test(
     seed, X, Y, alpha, kernel_type, approx_type, B1, bandwidth_multiplier=1
