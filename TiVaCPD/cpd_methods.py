@@ -379,7 +379,7 @@ class MMDA_CPD():
 class MMDATVGL_CPD():
     def __init__(self, series:np.array, p_wnd_dim:int=5, f_wnd_dim:int=10, threshold:int=.05, alpha:int=.05,
     kernel_type='gaussian', approx_type='permutation', B1:int=1000, B2:int=1000, B3:int=100, weights_type='uniform', l_minus:int=1, l_plus:int=5, 
-                                        alpha_:int=0.4, beta:int=0.4, penalty_type='L2', slice_size:int=10, overlap:int=1, max_iters:int=500):
+                                        alpha_:int=0.4, beta:int=0.4, penalty_type='L1', slice_size:int=6, overlap:int=1, max_iters:int=500):
         """
         @param series - timeseries
         @param p_wnd_dim - past window size
@@ -397,7 +397,7 @@ class MMDATVGL_CPD():
         @param alpha_ - default, 5
         @param beta - default, 10
         @param penalty_type - 'L1' or 'L2'
-        @param slice_size - default, 10
+        @param slice_size - default, 6
         @param overlap - measure of granularity, default=1
         @param max_iters - maximum number of iterations, default=1500
         """
@@ -458,7 +458,8 @@ class MMDATVGL_CPD():
         #mmd_agg = np.absolute(mmd_agg)
 
         # Min-max 
-        #mmd_agg /= np.max(np.abs(mmd_agg),axis=0)
+        if not np.all((mmd_agg == 0)):
+            mmd_agg /= np.max(np.abs(mmd_agg),axis=0)
 
         logit = (2./(1+np.exp(-3*(mmd_agg))))-1
         
@@ -490,7 +491,7 @@ class MMDATVGL_CPD():
     
     def TVGL_(self, series, alpha, beta, penalty_type, slice_size, overlap, threshold, max_iters):
         
-        slice_size = 10
+        slice_size = min(int(len(series)*0.1), slice_size)
 
         data = series
         model = TVGL(alpha, beta, penalty_type, slice_size, overlap=overlap, max_iters=max_iters)
@@ -523,13 +524,15 @@ class MMDATVGL_CPD():
                     df[(j,i)][k] = a[i,j]
 
             score = mat2vec(ps[k])-mat2vec(ps[k-1])
+            score[abs(score)<2.5] = 0
+            max_x = sum(abs(score))
 
             # Filter out noise
-            score[abs(score) < 0.1] = 0 
-            if abs(score.min()) > abs(score.max()):
-                max_x = score.min()
-            else:
-                max_x = score.max()
+            #score[abs(score) < 0.1] = 0 
+            #if abs(score.min()) > abs(score.max()):
+            #    max_x = score.min()
+            #else:
+            #    max_x = score.max()
 
             corr_score=np.concatenate((corr_score, np.repeat(max_x, 1)))
             corr_score=np.concatenate((corr_score, np.repeat(0, overlap-1)))
@@ -558,7 +561,8 @@ class MMDATVGL_CPD():
         else:
             corr_score=np.concatenate((corr_score, np.zeros(int(data.shape[0]-len(corr_score)))))
         # Min-max scaling 
-        corr_score /= np.max(np.abs(corr_score),axis=0)
+        if not np.all((corr_score == 0)):
+            corr_score /= np.max(np.abs(corr_score),axis=0)
         
         #corr_score =  savgol_filter(corr_score, 7, 3)
         
