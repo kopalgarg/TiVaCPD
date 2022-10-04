@@ -9,6 +9,14 @@ import pickle as pkl
 import scipy
 import scipy.spatial.distance as sd
 
+
+def load_data(data_path, ind, suffix):
+    
+    with open(os.path.join(data_path, ''.join([suffix, str(ind), '.pkl'])), 'rb') as f:
+            X = pkl.load(f)
+
+    return X
+
 def load_simulated(data_path, ind):
     
     with open(os.path.join(data_path, ''.join(['series_', str(ind), '.pkl'])), 'rb') as f:

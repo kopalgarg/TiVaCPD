@@ -1,1 +1,10 @@
 ruptures-1.1.7
+keras
+matplotlib
+numpy
+pandas
+roerich
+scikit-learn
+seaborn
+tensorflow
+timesynth
