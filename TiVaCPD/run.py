@@ -60,14 +60,15 @@ def main():
         os.mkdir(os.path.join(args.out_path, args.exp))
     if not os.path.exists(os.path.join(args.out_path, args.exp)):
         os.mkdir(os.path.join(args.out_path, args.exp, args.model_type))
-
+    
 
     for i in range(0, len(X_samples)):
+        
         print(i)
         if args.model_type == 'MMDATVGL_CPD':
             X = X_samples[i]
             
-            model = MMDATVGL_CPD(X, max_iters = 500, overlap=args.overlap, alpha = 0.001, threshold = args.threshold, f_wnd_dim = args.f_wnd_dim, p_wnd_dim = args.p_wnd_dim) 
+            model = MMDATVGL_CPD(X, max_iters = args.max_iters, overlap=args.overlap, alpha = 0.001, threshold = args.threshold, f_wnd_dim = args.f_wnd_dim, p_wnd_dim = args.p_wnd_dim) 
 
             mmd_score = shift(model.mmd_score, args.p_wnd_dim)
             corr_score = model.corr_score
@@ -88,13 +89,22 @@ def main():
             plt.legend()
             plt.title(args.exp)
             plt.show()
+        if args.model_type == 'KLCPD':
+            X = X_samples[i]
+            model = KLCPD(X, p_wnd_dim=args.p_wnd_dim, f_wnd_dim=args.f_wnd_dim, epochs=20)
+            y_pred = model.scores
+            plt.plot(y_pred)
+            plt.plot(X)
+            plt.show()
+
+
 
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser(description='change point detection')
     parser.add_argument('--data_path',  default='./data/changing_correlation') # exact data dir, including the name of exp
     parser.add_argument('--out_path', default = './out') # just the main out directory
-    parser.add_argument('--max_iters', type = int, default = 500)
+    parser.add_argument('--max_iters', type = int, default = 1000)
     parser.add_argument('--overlap', type = int, default = 1)
     parser.add_argument('--threshold', type = float, default = .2)
     parser.add_argument('--f_wnd_dim', type = int, default = 10)
