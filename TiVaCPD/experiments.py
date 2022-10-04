@@ -19,7 +19,8 @@ import fnmatch,os
 import pickle as pkl
 from scipy.signal import savgol_filter
 import warnings
-from scipy.signal import find_peaks, peak_prominences
+from scipy.signal import peak_prominences
+from pyampd.ampd import find_peaks, find_peaks_adaptive
 
 def save_data(path, array):
     with open(path,'wb') as f:
@@ -127,7 +128,7 @@ def main():
     f1_scores = []
 
 
-    for i in range(0, len(X_samples)):
+    for i in range(4, len(X_samples)):
         print(i)
         if args.model_type == 'MMDATVGL_CPD':
             X = X_samples[i]
@@ -140,9 +141,8 @@ def main():
 
             minLength = min(len(mmd_score), len(corr_score)) 
             corr_score = (corr_score)[:minLength]
-            corr_score[abs(corr_score) < 0.2] = 0
             mmd_score = mmd_score[:minLength]
-            combined_score = np.add(abs(mmd_score), abs(corr_score))/2
+            combined_score = np.add(abs(mmd_score), abs(corr_score))
             y_true = y_true[:minLength]
             
 
@@ -150,8 +150,7 @@ def main():
             
             mmd_score_savgol  = mmd_score #savgol_filter(mmd_score, 3, 2) # 2=polynomial order 
             corr_score_savgol =  savgol_filter(model.corr_score[:minLength], 7, 3)
-            corr_score_savgol[abs(corr_score_savgol) < 0.2] = 0
-            combined_score_savgol  = np.add(abs(mmd_score_savgol), abs(corr_score_savgol))/2
+            combined_score_savgol  = np.add(abs(mmd_score_savgol), abs(corr_score_savgol))
             
             # save intermediate results
             data_path = os.path.join(args.out_path, args.exp)
@@ -202,7 +201,7 @@ def main():
             auc_scores_combined.append(metrics.auc)
             f1_scores_combined.append(metrics.f1)
             print("EnsembleScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
-            
+            peaks=metrics.peaks
             plt.plot(X)
             plt.plot(y_true, label = 'y_true')
             plt.legend()
@@ -213,6 +212,7 @@ def main():
             plt.plot(mmd_score, label = 'mmd_score')
             plt.plot(corr_score, label = 'corr_score')
             plt.plot(combined_score, label = 'combined_score')
+            plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
             plt.show()
@@ -220,6 +220,7 @@ def main():
             plt.plot(mmd_score_savgol, label = 'mmd_score_savgol')
             plt.plot(corr_score_savgol, label = 'corr_score_savgol')
             plt.plot(combined_score_savgol, label = 'combined_score_savgol')
+            plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
             plt.show()
