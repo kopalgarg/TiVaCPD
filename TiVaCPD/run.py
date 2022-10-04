@@ -21,6 +21,7 @@ from scipy.signal import savgol_filter
 import warnings
 from scipy.signal import peak_prominences
 from pyampd.ampd import find_peaks, find_peaks_adaptive
+import ruptures as rpt
 
 def save_data(path, array):
     with open(path,'wb') as f:
@@ -45,12 +46,12 @@ def main():
 
     # load the data
     data_path = os.path.join(args.data_path)
-    suffix = args.suffix
-    match  = "{}_*".format(suffix)
+    prefix = args.prefix
+    match  = "{}_*".format(prefix)
     n_samples = len(fnmatch.filter(os.listdir(data_path), match))
     X_samples = []
     for i in range(n_samples):
-        X = load_data(data_path, i, "{}_".format(suffix))
+        X = load_data(data_path, i, "{}_".format(prefix))
         X_samples.append(X)
             
     # results path
@@ -68,28 +69,35 @@ def main():
         if args.model_type == 'MMDATVGL_CPD':
             X = X_samples[i]
             
-            model = MMDATVGL_CPD(X, max_iters = args.max_iters, overlap=args.overlap, alpha = 0.001, threshold = args.threshold, f_wnd_dim = args.f_wnd_dim, p_wnd_dim = args.p_wnd_dim) 
-
+            model = MMDATVGL_CPD(X, max_iters = args.max_iters, overlap=args.overlap, alpha = 0.001, threshold = args.threshold, f_wnd_dim = args.f_wnd_dim, p_wnd_dim = args.p_wnd_dim,
+            slice_size=args.slice_size) 
+            
             mmd_score = shift(model.mmd_score, args.p_wnd_dim)
             corr_score = model.corr_score
 
             minLength = min(len(mmd_score), len(corr_score)) 
             corr_score = (corr_score)[:minLength]
+            corr_score = savgol_filter(corr_score, 7, 3)
             mmd_score = mmd_score[:minLength]
-            
-            # processed combined score
-            
-            mmd_score_savgol  = mmd_score #savgol_filter(mmd_score, 3, 2) # 2=polynomial order 
-            corr_score_savgol =  savgol_filter(model.corr_score[:minLength], 7, 3)
-            combined_score_savgol  = np.add(abs(mmd_score_savgol), abs(corr_score_savgol))
-
-            plt.plot(mmd_score_savgol, label = 'mmd_score_savgol')
-            plt.plot(corr_score_savgol, label = 'corr_score_savgol')
-            plt.plot(combined_score_savgol, label = 'combined_score_savgol')
+        
+            plt.plot(mmd_score, label = 'DistScore')
+            plt.plot(corr_score, label = 'CorrScore')
+            plt.plot(mmd_score+corr_score, label = 'Ensemble')
             plt.legend()
             plt.title(args.exp)
             plt.show()
-        if args.model_type == 'KLCPD':
+
+            data_path = os.path.join(args.out_path, args.exp)
+            if not os.path.exists(args.out_path): 
+                os.mkdir(args.out_path)
+            if not os.path.exists(data_path): 
+                os.mkdir(data_path)
+
+            save_data(os.path.join(data_path, ''.join(['series_', str(i), '.pkl'])), X)
+            save_data(os.path.join(data_path, ''.join(['mmd_score_', str(i), '.pkl'])), mmd_score)
+            save_data(os.path.join(data_path, ''.join(['corr_score_', str(i), '.pkl'])), corr_score)
+
+        elif args.model_type == 'KLCPD':
             X = X_samples[i]
             model = KLCPD(X, p_wnd_dim=args.p_wnd_dim, f_wnd_dim=args.f_wnd_dim, epochs=20)
             y_pred = model.scores
@@ -97,6 +105,81 @@ def main():
             plt.plot(X)
             plt.show()
 
+            data_path = os.path.join(args.out_path, args.exp)
+            if not os.path.exists(args.out_path): 
+                os.mkdir(args.out_path)
+            if not os.path.exists(data_path): 
+                os.mkdir(data_path)
+
+            save_data(os.path.join(data_path, ''.join(['series_', str(i), '.pkl'])), X)
+            save_data(os.path.join(data_path, ''.join(['klcpd_score_', str(i), '.pkl'])), y_pred)
+
+        elif args.model_type == 'GRAPHTIME_CPD':
+            X = X_samples[i]
+            model = GRAPHTIME_CPD(series = X, p_wnd_dim=args.p_wnd_dim, f_wnd_dim=args.f_wnd_dim, max_iter = 500)
+            y_pred = np.zeros((len(X)))
+            
+            plt.plot(X)
+            plt.plot(y_pred, label = 'graphtime')
+            plt.legend()
+            plt.title(args.exp)
+            plt.show()
+
+            data_path = os.path.join(args.out_path, args.exp)
+            if not os.path.exists(args.out_path): 
+                os.mkdir(args.out_path)
+            if not os.path.exists(data_path): 
+                os.mkdir(data_path)
+
+            save_data(os.path.join(data_path, ''.join(['series_', str(i), '.pkl'])), X)
+            save_data(os.path.join(data_path, ''.join(['graphtime_score_', str(i), '.pkl'])), y_pred)
+            
+        elif args.model_type  == 'roerich':
+            X = X_samples[i]
+            model = roerich.OnlineNNClassifier(net='default', scaler="default", metric="KL_sym",
+                  periods=1, window_size=10, lag_size=30, step=10, n_epochs=25,
+                  lr=0.01, lam=0.0001, optimizer="Adam"
+                 )
+            y_pred, _ = model.predict(X)
+
+            plt.plot(X)
+            plt.plot(y_pred, label = 'roerich')
+            plt.legend()
+            plt.title(args.exp)
+            plt.show()
+
+            data_path = os.path.join(args.out_path, args.exp)
+            if not os.path.exists(args.out_path): 
+                os.mkdir(args.out_path)
+            if not os.path.exists(data_path): 
+                os.mkdir(data_path)
+
+            save_data(os.path.join(data_path, ''.join(['roerich_score_', str(i), '.pkl'])), y_pred)
+        
+        elif args.model_type  == 'ruptures':
+
+            X = X_samples[i]
+
+            n_samples = X.shape[0]
+            algo = rpt.Pelt(model="linear").fit(X)
+            result = algo.predict(pen=10)
+
+            y_pred=np.zeros(X.shape[0]+1)
+            y_pred[result] = 1
+
+            plt.plot(X)
+            plt.plot(y_pred, label = 'ruptures')
+            plt.legend()
+            plt.title(args.exp)
+            plt.show()
+
+            data_path = os.path.join(args.out_path, args.exp)
+            if not os.path.exists(args.out_path): 
+                os.mkdir(args.out_path)
+            if not os.path.exists(data_path): 
+                os.mkdir(data_path)
+
+            save_data(os.path.join(data_path, ''.join(['ruptures_score_', str(i), '.pkl'])), y_pred)
 
 
 if __name__=='__main__':
@@ -113,7 +196,8 @@ if __name__=='__main__':
     parser.add_argument('--model_type', default = 'MMDATVGL_CPD')
     parser.add_argument('--score_type', default='combined') # others: combined, correlation, mmdagg
     parser.add_argument('--margin', default = 10)
-    parser.add_argument('--suffix', default = 'series')
+    parser.add_argument('--prefix', default = 'series')
+    parser.add_argument('--slice_size', default = 10)
 
     args = parser.parse_args()
 

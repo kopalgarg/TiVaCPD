@@ -326,6 +326,43 @@ def main():
 
             save_data(os.path.join(data_path, ''.join(['roerich_score_', str(i), '.pkl'])), y_pred)
 
+        elif args.model_type == 'ruptures':
+            X = X_samples[i]
+
+            n_samples = X.shape[0]
+            algo = rpt.Pelt(model="linear").fit(X)
+            result = algo.predict(pen=10)
+
+            y_pred=np.zeros(X.shape[0]+1)
+            y_pred[result] = 1
+
+
+            y_true = y_true_samples[i]
+
+            metrics = ComputeMetrics(y_true, y_pred, args.margin, args.threshold)
+            auc_scores.append(metrics.auc)
+            f1_scores.append(metrics.f1) 
+            print("AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
+
+
+            plt.plot(X)
+            plt.plot(y_true, label = 'y_true')
+            plt.legend()
+            plt.title(args.exp)
+            plt.show()
+
+            plt.plot(y_pred, label = 'ruptures')
+            plt.legend()
+            plt.title(args.exp)
+            plt.show()
+
+            data_path = os.path.join(args.out_path, args.exp)
+            if not os.path.exists(args.out_path): 
+                os.mkdir(args.out_path)
+            if not os.path.exists(data_path): 
+                os.mkdir(data_path)
+
+            save_data(os.path.join(data_path, ''.join(['ruptures_score_', str(i), '.pkl'])), y_pred)
 
     
 
