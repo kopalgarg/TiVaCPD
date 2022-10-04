@@ -49,7 +49,6 @@ def main():
     match  = "{}_*".format(suffix)
     n_samples = len(fnmatch.filter(os.listdir(data_path), match))
     X_samples = []
-    y_true_samples = []
     for i in range(n_samples):
         X = load_data(data_path, i, "{}_".format(suffix))
         X_samples.append(X)
@@ -61,7 +60,6 @@ def main():
         os.mkdir(os.path.join(args.out_path, args.exp))
     if not os.path.exists(os.path.join(args.out_path, args.exp)):
         os.mkdir(os.path.join(args.out_path, args.exp, args.model_type))
-
 
 
     for i in range(0, len(X_samples)):
@@ -77,8 +75,6 @@ def main():
             minLength = min(len(mmd_score), len(corr_score)) 
             corr_score = (corr_score)[:minLength]
             mmd_score = mmd_score[:minLength]
-            combined_score = np.add(abs(mmd_score), abs(corr_score))
-            y_true = y_true[:minLength]
             
             # processed combined score
             
@@ -89,7 +85,6 @@ def main():
             plt.plot(mmd_score_savgol, label = 'mmd_score_savgol')
             plt.plot(corr_score_savgol, label = 'corr_score_savgol')
             plt.plot(combined_score_savgol, label = 'combined_score_savgol')
-            plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
             plt.show()
@@ -99,7 +94,6 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='change point detection')
     parser.add_argument('--data_path',  default='./data/changing_correlation') # exact data dir, including the name of exp
     parser.add_argument('--out_path', default = './out') # just the main out directory
-    parser.add_argument('--data_type', default = 'simulated_data') # others: beedance, HAR, block
     parser.add_argument('--max_iters', type = int, default = 500)
     parser.add_argument('--overlap', type = int, default = 1)
     parser.add_argument('--threshold', type = float, default = .2)
