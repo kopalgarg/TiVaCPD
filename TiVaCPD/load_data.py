@@ -10,9 +10,9 @@ import scipy
 import scipy.spatial.distance as sd
 
 
-def load_data(data_path, ind, suffix):
+def load_data(data_path, ind, prefix):
     
-    with open(os.path.join(data_path, ''.join([suffix, str(ind), '.pkl'])), 'rb') as f:
+    with open(os.path.join(data_path, ''.join([prefix, str(ind), '.pkl'])), 'rb') as f:
             X = pkl.load(f)
 
     return X
