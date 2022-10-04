@@ -9,6 +9,9 @@ import scipy
 from torch import threshold
 import pickle as pkl
 from numpy import ma
+from pyampd.ampd import find_peaks_adaptive
+from itertools import product
+import pandas as pd
 
 class ComputeMetrics():
     def __init__(self, y_true:np.array, y_pred:np.array, moe:int=5, threshold=0.05, model_type = 'no', process=True):
@@ -26,9 +29,65 @@ class ComputeMetrics():
         self.threshold = threshold
         self.model_type=model_type
 
-        self.f1, self.precision, self.recall= self.ChangePointF1Score(self.y_true, self.y_pred, window=moe, threshold=self.threshold)
+        self.f1, self.precision, self.recall, self.peaks= self.ChangePointF1Score(self.y_true, self.y_pred, window=moe, threshold=self.threshold)
         self.auc = self.get_auc(self.y_true, self.y_pred, self.model_type)
+
+
+    def ChangePointF1Score_(self, y_true, y_pred, window, threshold):
+        """Calculate the precision/recall of an estimated segmentation compared
+        with the true segmentation.
+        Args:
+            y_true (list): array of the last index of each regime (true
+                partition).
+            y_pred (list): array of the last index of each regime (computed
+                partition).
+            window (int, optional): allowed error (in points).
+        Returns:
+            tuple: (precision, recall)
+        """
         
+        if self.process:
+
+            if not np.all((y_pred == 0)):
+                y_pred = self.post_processing(y_pred, threshold)
+                y_pred[0:5] = 0 
+                y_pred[len(y_pred)-5:len(y_pred)] = 0
+                my_bkps = np.where(y_pred == 1)[0]
+            else:
+                my_bkps = []
+        
+        true_bkps = np.where(y_true == 1)[0]
+        
+        window = int(window)
+        assert window > 0, "Window of error must be positive (window = {})".format(window)
+        
+        if len(true_bkps) == 0 and len(my_bkps) == 0:
+            return 1,1, 1, y_pred
+
+        if len(my_bkps) == 0:
+            return 0, 0, 0, y_pred
+        
+        used = set()
+        true_pos = set(
+            true_b
+            for true_b, my_b in product(true_bkps[:], my_bkps[:])
+            if my_b - window < true_b < my_b + window
+            and not (my_b in used or used.add(my_b))
+        )
+
+        tp_ = len(true_pos)
+        
+        precision = tp_ / (len(my_bkps) ) # TP/(TP+FP)
+        
+        try:
+            recall = tp_ / (len(true_bkps) ) # TP/(TP+FN)
+        except:
+            import pdb; pdb.set_trace()
+
+        if (precision + recall == 0): f1=0
+        else:
+            f1 = 2*precision*recall/(precision+recall)
+        return f1, precision, recall, y_pred
 
     def ChangePointF1Score(self, y_true, y_pred, window, threshold):
         '''
@@ -40,11 +99,12 @@ class ComputeMetrics():
         Output:
         f1, precision, recall scores
         '''
-        #print(y_pred[100:200])
         if self.process:
-            y_pred = self.post_processing(y_pred, threshold)
-        #print(y_pred[100:200])
-        #print(y_true[100:200])
+            if not np.all((y_pred == 0)):
+                y_pred = self.post_processing(y_pred, threshold)
+                y_pred[0:5] = 0 
+                y_pred[len(y_pred)-5:len(y_pred)] = 0
+
 
         # given ground truth sequence of labels, and real labels, computes precision, recall and f1 score assuming leniancy of (window)
         l = len(y_true)
@@ -86,7 +146,7 @@ class ComputeMetrics():
         if (totalGt==0):
             recall=0
 
-        return f1, precision, recall
+        return f1, precision, recall, y_pred
 
     def peak_prominences_(self, distances):
         """
@@ -104,19 +164,33 @@ class ComputeMetrics():
 
     def post_processing(self, score, threshold):
         
-        score_peaks = self.peak_prominences_(np.array(score))[0]
-        for j in range(len(score_peaks)):
-            if self.peak_prominences_(np.array(score))[0][j] - self.peak_prominences_(np.array(score))[0][j-1] >threshold :
-                score_peaks[j] = 1
-            else:
-                score_peaks[j] = 0
-        return score_peaks
+        if pd.isnull(score).all():
+            score = np.zeros(shape=score.shape)
+
+        if not np.all((score==0)):
+            
+            score_peaks = np.zeros(shape = score.shape)
+            peaks = find_peaks_adaptive(score)
+
+            score_peaks[peaks] = 1
+            
+            return score_peaks 
+        else:
+            return score 
+
+
 
     def get_auc(self, y_true, y_pred, model_type):
         auc_scores = []
         minLength = int(min(len(y_true), len(y_pred)))
         if model_type=='KLCPD':
             y_pred = 2./(1+np.exp(-3*y_pred)) -1 # Logistic function for scaling bw 0-1
+        
+        if self.process:
+            y_pred = self.post_processing(y_pred, threshold)
+            y_pred[0:5] = 0 
+            y_pred[len(y_pred)-5:len(y_pred)] = 0 
+        
         fpr, tpr, _ = roc_curve(y_true[:minLength], y_pred[:minLength], pos_label = 1)
         auc_scores.append(auc(fpr, tpr))
         return auc_scores
