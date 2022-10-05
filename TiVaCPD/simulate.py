@@ -44,20 +44,20 @@ def sim_data(n_cp=3, constant_mean = False, constant_var = False, constant_corr 
     len = int(random.randrange(50, 100))  # random length of segment
 
     if constant_mean == False:
-      mu = round(random.uniform(1, 3), 2)
-      #mu = [1,3,5,3,5,3,1,3,5,3,5,3,1,3,5,3,5,3][i]
+      #mu = round(random.uniform(1, 3), 2)
+      mu = [1,3,5,3,5,3,1,3,5,3,5,3,1,3,5,3,5,3,1,3,5,3,5][i]
     else:
       
       mu = 0
     
     if constant_var == False:
       #sigma = round(random.uniform(.1, .7),2)
-      sigma = [.1,.8,.1,.8,.1,.8,.1,.8,.5,.3,.5,.3,.1,.3,.5,.3,.5,.3][i]
+      sigma = [.1,.8,.1,.8,.1,.8,.1,.8,.5,.3,.5,.3,.1,.3,.5,.3,.5,.3, .1,.8,.1,.8,.1,.8,.1,.8,.5,.3,.5,.3][i]
     else:
       sigma = 0.1
     
     if constant_corr == False:
-      rho = [1, -1, 0, 1, -1, 0, 1, -1][i] #int(random.randrange(-1, 2)) #round(random.uniform(-1,1),2)
+      rho = [1, -1, 0, 1, -1, 0, 1, -1, 1, -1, 0, 1, -1, 0, 1, -1, 1, -1, 0, 1, -1, 0, 1, -1][i] #int(random.randrange(-1, 2)) #round(random.uniform(-1,1),2)
 
     else:
       rho = 0
