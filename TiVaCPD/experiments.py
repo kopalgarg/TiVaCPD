@@ -127,7 +127,7 @@ def main():
     auc_scores = []
     f1_scores = []
 
-    for i in range(0, len(X_samples)):
+    for i in range(1, len(X_samples)):
         print(i)
         if args.model_type == 'MMDATVGL_CPD':
             X = X_samples[i]
@@ -147,9 +147,10 @@ def main():
 
             # processed combined score
             
-            mmd_score_savgol  = mmd_score #savgol_filter(mmd_score, 3, 2) # 2=polynomial order 
-            corr_score_savgol =  savgol_filter(model.corr_score[:minLength], 7, 3)
-            combined_score_savgol  = np.add(abs(mmd_score_savgol), abs(corr_score_savgol))
+            mmd_score_savgol  = savgol_filter(mmd_score, 11, 1) # 2=polynomial order 
+            corr_score_savgol = savgol_filter(model.corr_score[:minLength], 11,1)
+            #corr_score_savgol =  savgol_filter(model.corr_score[:minLength], 51, 3)
+            combined_score_savgol  = savgol_filter(np.add(abs(mmd_score_savgol), abs(corr_score_savgol)), 11,1)
             
             # save intermediate results
             data_path = os.path.join(args.out_path, args.exp)
