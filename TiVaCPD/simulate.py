@@ -45,7 +45,7 @@ def sim_data(n_cp=3, constant_mean = False, constant_var = False, constant_corr 
 
     if constant_mean == False:
       #mu = round(random.uniform(1, 3), 2)
-      mu = [1,3,5,3,5,3,1,3,5,3,5,3,1,3,5,3,5,3,1,3,5,3,5][i]
+      mu = [1,3,5,3,5,3,5,3,5,3,5,3,1,3,5,3,5,3,1,3,5,3,5][i]
     else:
       
       mu = 0
