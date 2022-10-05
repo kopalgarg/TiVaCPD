@@ -66,9 +66,9 @@ def main():
             combined_score_savgol  = savgol_filter(np.add(abs(mmd_score_savgol), abs(corr_score_savgol)), 11,1)
             
         
-            plt.plot(mmd_score_savgol, label = 'DistScore')
-            plt.plot(corr_score_savgol, label = 'CorrScore')
-            plt.plot(combined_score_savgol, label = 'Ensemble')
+            plt.plot(mmd_score, label = 'DistScore')
+            plt.plot(corr_score, label = 'CorrScore')
+            plt.plot(np.add(abs(mmd_score), abs(corr_score)), label = 'Ensemble')
             plt.legend()
             plt.title(args.exp)
             plt.show()
@@ -182,7 +182,7 @@ if __name__=='__main__':
     parser.add_argument('--model_type', default = 'MMDATVGL_CPD')
     parser.add_argument('--score_type', default='combined') # others: combined, correlation, mmdagg
     parser.add_argument('--margin', default = 10)
-    parser.add_argument('--prefix', default = 'series')
+    parser.add_argument('--prefix', default = 'user')
     parser.add_argument('--slice_size', default = 10)
 
     args = parser.parse_args()
