@@ -46,10 +46,13 @@ def main():
         
         print(i)
         if args.model_type == 'MMDATVGL_CPD':
+
+            data_path = os.path.join(args.out_path, args.exp)
+
             X = X_samples[i]
-            
+                        
             model = MMDATVGL_CPD(X, max_iters = args.max_iters, overlap=args.overlap, alpha = 0.001, threshold = args.threshold, f_wnd_dim = args.f_wnd_dim, p_wnd_dim = args.p_wnd_dim,
-            slice_size=args.slice_size) 
+            slice_size=args.slice_size, data_path = data_path, sample = i) 
             
             mmd_score = shift(model.mmd_score, args.p_wnd_dim)
             corr_score = model.corr_score
