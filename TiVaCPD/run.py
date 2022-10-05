@@ -3,14 +3,11 @@
 import numpy as np
 import pandas as pd
 import os
-import sys
 import numpy as np
 import argparse
 from matplotlib import pyplot as plt
-import seaborn as sns
 from tvgl import *
 from load_data import *
-import matplotlib
 from performance import *
 import roerich
 from cpd_methods import *
@@ -18,29 +15,11 @@ from performance import *
 import fnmatch,os
 import pickle as pkl
 from scipy.signal import savgol_filter
-import warnings
-from scipy.signal import peak_prominences
-from pyampd.ampd import find_peaks, find_peaks_adaptive
 import ruptures as rpt
 
 def save_data(path, array):
     with open(path,'wb') as f:
         pkl.dump(array, f)
-
-def peak_prominences_(distances):
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore")
-        all_peak_prom = peak_prominences(distances, range(len(distances)))
-    return all_peak_prom
-
-def post_processing(score, threshold):
-        score_peaks = peak_prominences_(np.array(score))[0]
-        for j in range(len(score_peaks)):
-            if peak_prominences_(np.array(score))[0][j] - peak_prominences_(np.array(score))[0][j-1] >threshold :
-                score_peaks[j] = 1
-            else:
-                score_peaks[j] = 0
-        return score_peaks
 
 def main():
 
@@ -77,12 +56,16 @@ def main():
 
             minLength = min(len(mmd_score), len(corr_score)) 
             corr_score = (corr_score)[:minLength]
-            corr_score = savgol_filter(corr_score, 7, 3)
             mmd_score = mmd_score[:minLength]
+
+            mmd_score_savgol  = savgol_filter(mmd_score, 11, 1) 
+            corr_score_savgol = savgol_filter(model.corr_score[:minLength], 11,1)
+            combined_score_savgol  = savgol_filter(np.add(abs(mmd_score_savgol), abs(corr_score_savgol)), 11,1)
+            
         
-            plt.plot(mmd_score, label = 'DistScore')
-            plt.plot(corr_score, label = 'CorrScore')
-            plt.plot(mmd_score+corr_score, label = 'Ensemble')
+            plt.plot(mmd_score_savgol, label = 'DistScore')
+            plt.plot(corr_score_savgol, label = 'CorrScore')
+            plt.plot(combined_score_savgol, label = 'Ensemble')
             plt.legend()
             plt.title(args.exp)
             plt.show()

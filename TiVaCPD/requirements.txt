@@ -1,4 +1,4 @@
-ruptures-1.1.7
+ruptures
 keras
 matplotlib
 numpy
