@@ -127,7 +127,6 @@ def main():
     auc_scores = []
     f1_scores = []
 
-
     for i in range(0, len(X_samples)):
         print(i)
         if args.model_type == 'MMDATVGL_CPD':
