@@ -379,7 +379,7 @@ class MMDA_CPD():
 class MMDATVGL_CPD():
     def __init__(self, series:np.array, p_wnd_dim:int=5, f_wnd_dim:int=10, threshold:int=.05, alpha:int=.05,
     kernel_type='gaussian', approx_type='permutation', B1:int=1000, B2:int=1000, B3:int=100, weights_type='uniform', l_minus:int=1, l_plus:int=5, 
-                                        alpha_:int=0.4, beta:int=0.4, penalty_type='L1', slice_size:int=10, overlap:int=1, max_iters:int=500):
+                                        alpha_:int=0.4, beta:int=0.4, penalty_type='L1', slice_size:int=10, overlap:int=1, max_iters:int=500, data_path = '', sample = ''):
         """
         @param series - timeseries
         @param p_wnd_dim - past window size
@@ -400,6 +400,8 @@ class MMDATVGL_CPD():
         @param slice_size - default, 6
         @param overlap - measure of granularity, default=1
         @param max_iters - maximum number of iterations, default=1500
+        @param data_path - path for saving explainability plot
+        @param sample - sample number
         """
         super().__init__()
         self.p_wnd_dim = p_wnd_dim
@@ -421,13 +423,15 @@ class MMDATVGL_CPD():
         self.slice_size = slice_size
         self.overlap = overlap
         self.max_iters = max_iters
+        self.data_path = data_path
+        self.sample = sample
 
         self.mmd_score, self.mmd_logit = self.dynamic_windowing(p_wnd_dim, f_wnd_dim, series, threshold, alpha, kernel_type, 
                                                     approx_type, B1, B2, B3, weights_type, l_minus, l_plus)
 
         self.corr_score = self.TVGL_(series=self.series, alpha = self.alpha_, beta =self.beta, penalty_type=self.penalty_type,
-                                            slice_size=self.slice_size, overlap=self.overlap, threshold=self.threshold, max_iters=self.max_iters)
-        #self.scores = self.mmd_score + abs(self.corr_score)
+                                            slice_size=self.slice_size, overlap=self.overlap, threshold=self.threshold, max_iters=self.max_iters,
+                                            data_path = self.data_path, sample = self.sample)
 
     def dynamic_windowing(self, p_wnd_dim, f_wnd_dim, series, threshold, alpha, kernel_type, approx_type, B1, B2, B3, weight_type, l_minus, l_plus):
 
@@ -489,9 +493,9 @@ class MMDATVGL_CPD():
         correlation[covariance == 0] = 0
         return correlation
     
-    def TVGL_(self, series, alpha, beta, penalty_type, slice_size, overlap, threshold, max_iters):
+    def TVGL_(self, series, alpha, beta, penalty_type, slice_size, overlap, threshold, max_iters, data_path, sample):
         
-        slice_size = min(int(len(series)*0.1), slice_size)
+        slice_size = int(slice_size) #min(int(len(series)*0.1), slice_size)
 
         data = series
         model = TVGL(alpha, beta, penalty_type, slice_size, overlap=overlap, max_iters=max_iters)
@@ -556,6 +560,8 @@ class MMDATVGL_CPD():
         ax2 = ax.twinx()
         ax2.plot(data, lw=2)
         corr_score[0]=0
+        ax.tick_params(axis='x', rotation=90)
+        ax2.tick_params(axis='x', rotation=90)
     
         # Zero-padding to account for scaling 
         if len(corr_score) > len(data):
@@ -566,11 +572,13 @@ class MMDATVGL_CPD():
         if not np.all((corr_score == 0)):
             corr_score /= np.max(np.abs(corr_score),axis=0)
         
-        #corr_score =  savgol_filter(corr_score, 7, 3)
         
-        plt.plot(corr_score, color='black', label = 'corr_score')
         plt.legend()
-        plt.show()
+
+        if data_path !='':
+            plt.savefig(os.path.join(data_path, ''.join(['CorrScore_interpretability_', str(sample), '.png'])))
+        else:
+            plt.show()
         
         return corr_score
 
