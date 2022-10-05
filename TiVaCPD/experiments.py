@@ -51,13 +51,19 @@ def main():
         y_true_samples = []
         for i in range(n_samples):
             X, gt_cor, gt_var, gt_mean = load_simulated(data_path, i)
-            y_true = abs(gt_mean) + abs(gt_var) + abs(gt_cor)
+
+            if np.all((gt_mean== gt_mean[0])) and np.all((gt_var == gt_var[0])):
+                # cases where we have changes only in correlation
+                y_true = gt_cor
+            else:
+                y_true = abs(gt_mean) + abs(gt_var) + abs(gt_cor)
             y_true_spike = y_true.copy()
             for j in range(len(y_true)):
                 if y_true[j] != y_true[j-1] and j!=0:
                     y_true_spike[j] = 1
                 else:
                     y_true_spike[j] = 0
+            
             y_true = y_true_spike
             X_samples.append(X)
             y_true_samples.append(y_true)
@@ -77,6 +83,7 @@ def main():
                     y_true_spike[j] = 1
                 else:
                     y_true_spike[j] = 0
+            
             y_true = y_true_spike
             X_samples.append(X)
             y_true_samples.append(y_true)
@@ -127,13 +134,16 @@ def main():
     auc_scores = []
     f1_scores = []
 
-    for i in range(1, len(X_samples)):
+    for i in range(0, 3):
         print(i)
         if args.model_type == 'MMDATVGL_CPD':
+            
+            data_path = os.path.join(args.out_path, args.exp)
+
             X = X_samples[i]
             y_true = y_true_samples[i]
             
-            model = MMDATVGL_CPD(X, max_iters = 500, overlap=args.overlap, alpha = 0.001, threshold = args.threshold, f_wnd_dim = args.f_wnd_dim, p_wnd_dim = args.p_wnd_dim) 
+            model = MMDATVGL_CPD(X, max_iters = args.max_iters, overlap=args.overlap, alpha = 0.001, threshold = args.threshold, f_wnd_dim = args.f_wnd_dim, p_wnd_dim = args.p_wnd_dim, data_path = data_path, sample = i, slice_size=args.slice_size) 
 
             mmd_score = shift(model.mmd_score, args.p_wnd_dim)
             corr_score = model.corr_score
@@ -147,13 +157,13 @@ def main():
 
             # processed combined score
             
-            mmd_score_savgol  = savgol_filter(mmd_score, 11, 1) # 2=polynomial order 
-            corr_score_savgol = savgol_filter(model.corr_score[:minLength], 11,1)
-            #corr_score_savgol =  savgol_filter(model.corr_score[:minLength], 51, 3)
-            combined_score_savgol  = savgol_filter(np.add(abs(mmd_score_savgol), abs(corr_score_savgol)), 11,1)
+            mmd_score_savgol  = savgol_filter(mmd_score, 11, 1) 
+            corr_score_savgol = savgol_filter(corr_score, 11,1) 
+            
+            combined_score_savgol  = savgol_filter(np.add(abs(mmd_score_savgol), abs(corr_score_savgol)), 5,   3)
             
             # save intermediate results
-            data_path = os.path.join(args.out_path, args.exp)
+        
             if not os.path.exists(args.out_path): 
                 os.mkdir(args.out_path)
             if not os.path.exists(data_path): 
@@ -195,27 +205,22 @@ def main():
             auc_scores_correlation.append(metrics.auc)
             f1_scores_correlation.append(metrics.f1) 
             print("CorrScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
-        
+            peaks=metrics.peaks
+
             y_pred = combined_score_savgol
             metrics = ComputeMetrics(y_true, y_pred, args.margin)
             auc_scores_combined.append(metrics.auc)
             f1_scores_combined.append(metrics.f1)
             print("EnsembleScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
-            peaks=metrics.peaks
+            
+            #peaks=metrics.peaks
+            
             plt.plot(X)
             plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
-            plt.show()
-
-            
-            plt.plot(mmd_score, label = 'mmd_score')
-            plt.plot(corr_score, label = 'corr_score')
-            plt.plot(combined_score, label = 'combined_score')
-            plt.plot(y_true, label = 'y_true')
-            plt.legend()
-            plt.title(args.exp)
-            plt.show()
+            plt.savefig(os.path.join(data_path, ''.join(['X_', str(i), '.png'])))
+            plt.clf()
 
             plt.plot(mmd_score_savgol, label = 'mmd_score_savgol')
             plt.plot(corr_score_savgol, label = 'corr_score_savgol')
@@ -223,7 +228,18 @@ def main():
             plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
-            plt.show()
+            plt.savefig(os.path.join(data_path, ''.join(['TiVaCPD_score_components_', str(i), '.png'])))
+            plt.clf()
+
+            plt.plot(mmd_score_savgol, label = 'mmd_score_savgol')
+            plt.plot(corr_score_savgol, label = 'corr_score_savgol')
+            plt.plot(combined_score_savgol, label = 'combined_score_savgol')
+            plt.plot(y_true, label = 'y_true')
+            plt.plot(peaks, label = 'peaks')
+            plt.legend()
+            plt.title(args.exp)
+            plt.savefig(os.path.join(data_path, ''.join(['TiVaCPD_score_components_peaks_', str(i), '.png'])))
+            plt.clf()
 
             print(args.data_type, args.model_type, args.exp, args.score_type)
 
@@ -241,18 +257,29 @@ def main():
             metrics = ComputeMetrics(y_true, y_pred, args.margin, args.threshold, process=False)
             auc_scores.append(metrics.auc)
             f1_scores.append(metrics.f1) 
+            peaks = metrics.peaks
             print("AUC:",np.round(metrics.auc, 2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
             
             plt.plot(X)
             plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
-            plt.show()
+            plt.savefig(os.path.join(data_path, ''.join(['X_', str(i), '.png'])))
+            plt.clf()
 
             plt.plot(y_pred, label = 'graphtime')
+            plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
-            plt.show()
+            plt.savefig(os.path.join(data_path, ''.join(['GRAPHTIME_score_', str(i), '.png'])))
+            plt.clf()
+
+            plt.plot(y_true, label = 'y_true')
+            plt.plot(peaks, label = 'peaks')
+            plt.legend()
+            plt.title(args.exp)
+            plt.savefig(os.path.join(data_path, ''.join(['GRAPHTIME_peaks_', str(i), '.png'])))
+            plt.clf()
 
             data_path = os.path.join(args.out_path, args.exp)
             if not os.path.exists(args.out_path): 
@@ -272,18 +299,30 @@ def main():
             metrics = ComputeMetrics(y_true, y_pred, args.margin, args.threshold, model_type='KLCPD')
             auc_scores.append(metrics.auc)
             f1_scores.append(metrics.f1)
+            peaks=metrics.peaks
+
             print("AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
             plt.plot(X)
             plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
-            plt.show()
+            plt.savefig(os.path.join(data_path, ''.join(['X_', str(i), '.png'])))
+            plt.clf()
 
             plt.plot(y_pred, label = 'KLCPD')
+            plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
-            plt.show()
+            plt.savefig(os.path.join(data_path, ''.join(['KLCPD_score_', str(i), '.png'])))
+            plt.clf()
+            
+            plt.plot(y_true, label = 'y_true')
+            plt.plot(peaks, label = 'peaks')
+            plt.legend()
+            plt.title(args.exp)
+            plt.savefig(os.path.join(data_path, ''.join(['KLCPD_peaks_', str(i), '.png'])))
+            plt.clf()
 
             data_path = os.path.join(args.out_path, args.exp)
             if not os.path.exists(args.out_path): 
@@ -304,6 +343,7 @@ def main():
             metrics = ComputeMetrics(y_true, y_pred, args.margin, args.threshold)
             auc_scores.append(metrics.auc)
             f1_scores.append(metrics.f1) 
+            peaks =metrics.peaks
             print("AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
 
@@ -311,12 +351,22 @@ def main():
             plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
-            plt.show()
+            plt.savefig(os.path.join(data_path, ''.join(['X_', str(i), '.png'])))
+            plt.clf()
 
             plt.plot(y_pred, label = 'roerich')
+            plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
-            plt.show()
+            plt.savefig(os.path.join(data_path, ''.join(['roerich_score_', str(i), '.png'])))
+            plt.clf()
+
+            plt.plot(y_true, label = 'y_true')
+            plt.plot(peaks, label = 'peaks')
+            plt.legend()
+            plt.title(args.exp)
+            plt.savefig(os.path.join(data_path, ''.join(['roerich_peaks_', str(i), '.png'])))
+            plt.clf()
 
             data_path = os.path.join(args.out_path, args.exp)
             if not os.path.exists(args.out_path): 
@@ -342,6 +392,7 @@ def main():
             metrics = ComputeMetrics(y_true, y_pred, args.margin, args.threshold)
             auc_scores.append(metrics.auc)
             f1_scores.append(metrics.f1) 
+            peaks = metrics.peaks
             print("AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
 
@@ -349,12 +400,22 @@ def main():
             plt.plot(y_true, label = 'y_true')
             plt.legend()
             plt.title(args.exp)
-            plt.show()
+            plt.savefig(os.path.join(data_path, ''.join(['X_', str(i), '.png'])))
+            plt.clf()
 
-            plt.plot(y_pred, label = 'ruptures')
+            plt.plot(y_true, label = 'y_true')
+            plt.plot(y_pred, label = 'y_pred')
             plt.legend()
             plt.title(args.exp)
-            plt.show()
+            plt.savefig(os.path.join(data_path, ''.join(['ruptures_score_', str(i), '.png'])))
+            plt.clf()
+
+            plt.plot(y_true, label = 'y_true')
+            plt.plot(peaks, label = 'peaks')
+            plt.legend()
+            plt.title(args.exp)
+            plt.savefig(os.path.join(data_path, ''.join(['ruptures_peaks_', str(i), '.png'])))
+            plt.clf()
 
             data_path = os.path.join(args.out_path, args.exp)
             if not os.path.exists(args.out_path): 
@@ -395,7 +456,8 @@ if __name__=='__main__':
     parser.add_argument('--exp', default = 'changing_correlation') # used for output path for results
     parser.add_argument('--model_type', default = 'MMDATVGL_CPD')
     parser.add_argument('--score_type', default='combined') # others: combined, correlation, mmdagg
-    parser.add_argument('--margin', default = 10)
+    parser.add_argument('--margin', default = 5)
+    parser.add_argument('--slice_size', default = 10)
 
     args = parser.parse_args()
 
