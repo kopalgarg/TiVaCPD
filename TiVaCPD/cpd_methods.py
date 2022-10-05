@@ -379,7 +379,7 @@ class MMDA_CPD():
 class MMDATVGL_CPD():
     def __init__(self, series:np.array, p_wnd_dim:int=5, f_wnd_dim:int=10, threshold:int=.05, alpha:int=.05,
     kernel_type='gaussian', approx_type='permutation', B1:int=1000, B2:int=1000, B3:int=100, weights_type='uniform', l_minus:int=1, l_plus:int=5, 
-                                        alpha_:int=0.4, beta:int=0.4, penalty_type='L1', slice_size:int=6, overlap:int=1, max_iters:int=500):
+                                        alpha_:int=0.4, beta:int=0.4, penalty_type='L1', slice_size:int=10, overlap:int=1, max_iters:int=500):
         """
         @param series - timeseries
         @param p_wnd_dim - past window size
@@ -503,7 +503,8 @@ class MMDATVGL_CPD():
         col_names = []
         for i in range(ps[0].shape[0]-1,-1,-1):
             for j in range(ps[0].shape[1]-1,-1,-1):
-                col_names.append((j,i))
+                if i!=j:
+                    col_names.append((j,i))
 
         df = pd.DataFrame(1.0, index=np.arange(len(data)), columns=col_names)
 
@@ -511,8 +512,8 @@ class MMDATVGL_CPD():
 
         for k in range(len(ps)):
 
-            # average change in comparison to past 2 windows 
-            avg_ps=(ps[k-1] + ps[k-2])/2
+            # average change in comparison to past 3 windows 
+            avg_ps=(ps[k-1] + ps[k-2] +ps[k-3])/3
             a = ((ps[k])-avg_ps)
 
             # Filter out noise
@@ -521,9 +522,10 @@ class MMDATVGL_CPD():
 
             for i in range(a.shape[0]-1,-1,-1):
                 for j in range(a.shape[1]-1,-1,-1):
-                    df[(j,i)][k] = a[i,j]
+                    if i!=j:
+                        df[(j,i)][k] = a[i,j]
 
-            score = mat2vec(ps[k])-mat2vec(ps[k-1])
+            score = mat2vec(ps[k])-mat2vec(avg_ps)
             score[abs(score)<2.5] = 0
             max_x = sum(abs(score))
 
