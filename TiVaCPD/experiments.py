@@ -63,7 +63,6 @@ def main():
                     y_true_spike[j] = 1
                 else:
                     y_true_spike[j] = 0
-            
             y_true = y_true_spike
             X_samples.append(X)
             y_true_samples.append(y_true)
@@ -160,7 +159,7 @@ def main():
             mmd_score_savgol  = savgol_filter(mmd_score, 11, 1) 
             corr_score_savgol = savgol_filter(corr_score, 11,1) 
             
-            combined_score_savgol  = savgol_filter(np.add(abs(mmd_score_savgol), abs(corr_score_savgol)), 5,   3)
+            combined_score_savgol  = savgol_filter(np.add(abs(mmd_score_savgol), abs(corr_score_savgol)), 7,   1)
             
             # save intermediate results
         
@@ -176,20 +175,14 @@ def main():
 
             y_pred = abs(mmd_score)
             metrics = ComputeMetrics(y_true, y_pred, args.margin)
-            auc_scores_mmdagg.append(metrics.auc)
-            f1_scores_mmdagg.append(metrics.f1) 
             print("DistScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
             y_pred = abs(corr_score)
             metrics = ComputeMetrics(y_true, abs(y_pred), args.margin)
-            auc_scores_correlation.append(metrics.auc)
-            f1_scores_correlation.append(metrics.f1) 
             print("CorrScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
             y_pred = abs(combined_score)
             metrics= ComputeMetrics(y_true, y_pred, args.margin)
-            auc_scores_combined.append(metrics.auc)
-            f1_scores_combined.append(metrics.f1)
             print("EnsembleScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
             print("Processed:")
@@ -205,15 +198,14 @@ def main():
             auc_scores_correlation.append(metrics.auc)
             f1_scores_correlation.append(metrics.f1) 
             print("CorrScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
-            peaks=metrics.peaks
+            
 
             y_pred = combined_score_savgol
             metrics = ComputeMetrics(y_true, y_pred, args.margin)
             auc_scores_combined.append(metrics.auc)
             f1_scores_combined.append(metrics.f1)
             print("EnsembleScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
-            
-            #peaks=metrics.peaks
+            peaks=metrics.peaks
             
             plt.plot(X)
             plt.plot(y_true, label = 'y_true')
