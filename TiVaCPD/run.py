@@ -171,14 +171,14 @@ def main():
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser(description='change point detection')
-    parser.add_argument('--data_path',  default='./data/changing_correlation') # exact data dir, including the name of exp
+    parser.add_argument('--data_path',  default='./data/grump') # exact data dir, including the name of exp
     parser.add_argument('--out_path', default = './out') # just the main out directory
     parser.add_argument('--max_iters', type = int, default = 1000)
     parser.add_argument('--overlap', type = int, default = 1)
     parser.add_argument('--threshold', type = float, default = .2)
     parser.add_argument('--f_wnd_dim', type = int, default = 10)
     parser.add_argument('--p_wnd_dim', type = int, default = 3)
-    parser.add_argument('--exp', default = 'changing_correlation') # used for output path for results
+    parser.add_argument('--exp', default = 'grump') # used for output path for results
     parser.add_argument('--model_type', default = 'MMDATVGL_CPD')
     parser.add_argument('--score_type', default='combined') # others: combined, correlation, mmdagg
     parser.add_argument('--margin', default = 10)
