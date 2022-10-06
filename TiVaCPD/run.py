@@ -176,7 +176,7 @@ if __name__=='__main__':
     parser.add_argument('--max_iters', type = int, default = 1000)
     parser.add_argument('--overlap', type = int, default = 1)
     parser.add_argument('--threshold', type = float, default = .2)
-    parser.add_argument('--f_wnd_dim', type = int, default = 10)
+    parser.add_argument('--f_wnd_dim', type = int, default = 5)
     parser.add_argument('--p_wnd_dim', type = int, default = 3)
     parser.add_argument('--exp', default = 'grump') # used for output path for results
     parser.add_argument('--model_type', default = 'MMDATVGL_CPD')
