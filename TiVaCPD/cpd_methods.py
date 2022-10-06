@@ -530,7 +530,7 @@ class MMDATVGL_CPD():
                         df[(j,i)][k] = a[i,j]
 
             score = mat2vec(ps[k])-mat2vec(avg_ps)
-            score[abs(score)<2.5] = 0
+            #score[abs(score)<0.05] = 0
             max_x = sum(abs(score))
 
             # Filter out noise
