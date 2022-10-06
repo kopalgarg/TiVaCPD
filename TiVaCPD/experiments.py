@@ -126,14 +126,23 @@ def main():
     
     auc_scores_combined =  []
     f1_scores_combined = []
+    precision_scores_combined = []
+    recall_scores_combined = []
     auc_scores_correlation =  []
     f1_scores_correlation= []
+    precision_scores_correlation = []
+    recall_scores_correlation = []
     auc_scores_mmdagg =  []
     f1_scores_mmdagg= []
+    precision_scores_mmdagg = []
+    recall_scores_mmdagg = []
+
     auc_scores = []
     f1_scores = []
+    precision_scores  =[]
+    recall_scores = []
 
-    for i in range(0, 2):
+    for i in range(0, len(X_samples)):
         print(i)
         if args.model_type == 'MMDATVGL_CPD':
             
@@ -191,12 +200,16 @@ def main():
             metrics = ComputeMetrics(y_true, y_pred, args.margin)
             auc_scores_mmdagg.append(metrics.auc)
             f1_scores_mmdagg.append(metrics.f1) 
+            precision_scores_mmdagg.append(metrics.precision)
+            recall_scores_mmdagg.append(metrics.recall)
             print("DistScore:", "AUC:", np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
             y_pred = abs(corr_score_savgol)
             metrics = ComputeMetrics(y_true, y_pred, args.margin)
             auc_scores_correlation.append(metrics.auc)
             f1_scores_correlation.append(metrics.f1) 
+            precision_scores_correlation.append(metrics.precision)
+            recall_scores_correlation.append(metrics.recall)
             print("CorrScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
             
 
@@ -204,6 +217,8 @@ def main():
             metrics = ComputeMetrics(y_true, y_pred, args.margin)
             auc_scores_combined.append(metrics.auc)
             f1_scores_combined.append(metrics.f1)
+            precision_scores_combined.append(metrics.precision)
+            recall_scores_combined.append(metrics.recall)
             print("EnsembleScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
             peaks=metrics.peaks
             
@@ -249,6 +264,8 @@ def main():
             metrics = ComputeMetrics(y_true, y_pred, args.margin, args.threshold, process=False)
             auc_scores.append(metrics.auc)
             f1_scores.append(metrics.f1) 
+            precision_scores.append(metrics.precision)
+            recall_scores.append(metrics.recall)
             peaks = metrics.peaks
             print("AUC:",np.round(metrics.auc, 2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
             
@@ -291,6 +308,8 @@ def main():
             metrics = ComputeMetrics(y_true, y_pred, args.margin, args.threshold, model_type='KLCPD')
             auc_scores.append(metrics.auc)
             f1_scores.append(metrics.f1)
+            precision_scores.append(metrics.precision)
+            recall_scores.append(metrics.recall)
             peaks=metrics.peaks
 
             print("AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
@@ -335,6 +354,8 @@ def main():
             metrics = ComputeMetrics(y_true, y_pred, args.margin, args.threshold)
             auc_scores.append(metrics.auc)
             f1_scores.append(metrics.f1) 
+            precision_scores.append(metrics.precision)
+            recall_scores.append(metrics.recall)
             peaks =metrics.peaks
             print("AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
@@ -384,6 +405,8 @@ def main():
             metrics = ComputeMetrics(y_true, y_pred, args.margin, args.threshold)
             auc_scores.append(metrics.auc)
             f1_scores.append(metrics.f1) 
+            precision_scores.append(metrics.precision)
+            recall_scores.append(metrics.recall)
             peaks = metrics.peaks
             print("AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
@@ -422,16 +445,24 @@ def main():
     if args.model_type == 'MMDATVGL_CPD':
         print("auc_scores_combined_CI", mean_confidence_interval(auc_scores_combined))
         print("f1_scores_combined_CI", mean_confidence_interval(f1_scores_combined))
+        print("precision_scores_combined_CI", mean_confidence_interval(precision_scores_combined))
+        print("recall_scores_combined_CI", mean_confidence_interval(recall_scores_combined))
 
         print("auc_scores_correlation_CI", mean_confidence_interval(auc_scores_correlation))
         print("f1_scores_correlation_CI", mean_confidence_interval(f1_scores_correlation))
+        print("precision_scores_correlation_CI", mean_confidence_interval(precision_scores_combined))
+        print("recall_scores_correlation_CI", mean_confidence_interval(recall_scores_combined))
 
         print("auc_scores_mmdagg_CI", mean_confidence_interval(auc_scores_mmdagg))
         print("f1_scores_mmdagg_CI", mean_confidence_interval(f1_scores_mmdagg))
+        print("precision_scores_mmdagg_CI", mean_confidence_interval(precision_scores_mmdagg))
+        print("recall_scores_mmdagg_CI", mean_confidence_interval(recall_scores_mmdagg))
     else:
         print(args.data_type, args.model_type, args.exp)
         print("auc_CI", mean_confidence_interval(auc_scores))
         print("f1_CI", mean_confidence_interval(f1_scores))
+        print("precision_CI", mean_confidence_interval(precision_scores))
+        print("recall_CI", mean_confidence_interval(recall_scores))
 
 
 if __name__=='__main__':
