@@ -465,6 +465,8 @@ class MMDATVGL_CPD():
         if not np.all((mmd_agg == 0)):
             mmd_agg /= np.max(np.abs(mmd_agg),axis=0)
 
+        mmd_agg = np.concatenate((np.zeros(f_wnd_dim), mmd_agg))
+        
         logit = (2./(1+np.exp(-3*(mmd_agg))))-1
         
         
@@ -571,7 +573,6 @@ class MMDATVGL_CPD():
         # Min-max scaling 
         if not np.all((corr_score == 0)):
             corr_score /= np.max(np.abs(corr_score),axis=0)
-        
         
         plt.legend()
 
