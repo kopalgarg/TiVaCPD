@@ -55,6 +55,7 @@ def main():
             slice_size=args.slice_size, data_path = data_path, sample = i) 
             
             mmd_score = shift(model.mmd_score, args.p_wnd_dim)
+           
             corr_score = model.corr_score
 
             minLength = min(len(mmd_score), len(corr_score)) 
@@ -62,7 +63,7 @@ def main():
             mmd_score = mmd_score[:minLength]
 
             mmd_score_savgol  = savgol_filter(mmd_score, 11, 1) 
-            corr_score_savgol = savgol_filter(model.corr_score[:minLength], 11,1)
+            corr_score_savgol = savgol_filter(corr_score, 11,1)
             combined_score_savgol  = savgol_filter(np.add(abs(mmd_score_savgol), abs(corr_score_savgol)), 11,1)
             
         
