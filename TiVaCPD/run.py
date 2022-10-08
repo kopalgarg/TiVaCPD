@@ -66,7 +66,7 @@ def main():
             corr_score_savgol = savgol_filter(corr_score, 11,1)
             combined_score_savgol  = savgol_filter(np.add(abs(mmd_score_savgol), abs(corr_score_savgol)), 11,1)
             
-        
+            plt.figure(figsize= (30,3))
             plt.plot(mmd_score, label = 'DistScore')
             plt.plot(corr_score, label = 'CorrScore')
             plt.plot(np.add(abs(mmd_score), abs(corr_score)), label = 'Ensemble')
@@ -106,6 +106,7 @@ def main():
             model = GRAPHTIME_CPD(series = X, p_wnd_dim=args.p_wnd_dim, f_wnd_dim=args.f_wnd_dim, max_iter = 500)
             y_pred = np.zeros((len(X)))
             
+            plt.figure(figsize= (30,3))
             plt.plot(X)
             plt.plot(y_pred, label = 'graphtime')
             plt.legend()
@@ -129,6 +130,7 @@ def main():
                  )
             y_pred, _ = model.predict(X)
 
+            plt.figure(figsize= (30,3))
             plt.plot(X)
             plt.plot(y_pred, label = 'roerich')
             plt.legend()
@@ -154,6 +156,7 @@ def main():
             y_pred=np.zeros(X.shape[0]+1)
             y_pred[result] = 1
 
+            plt.figure(figsize= (30,3))
             plt.plot(X)
             plt.plot(y_pred, label = 'ruptures')
             plt.legend()
