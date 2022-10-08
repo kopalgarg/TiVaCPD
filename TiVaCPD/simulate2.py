@@ -8,6 +8,16 @@ import argparse
 from load_data import *
 import warnings
 
+def random_corrmat(K):
+    
+    x = np.random.randint(-1,2, size=(K, K))
+    #np.random.randn(K, K)
+    #x = x * x.T
+    #x /= np.max(np.abs(x))
+    np.fill_diagonal(x, 1.)
+    
+    return x
+
 def block_dataset(K, T, B=3):
     warnings.simplefilter('ignore')
     block_len = np.ceil(T / B)
