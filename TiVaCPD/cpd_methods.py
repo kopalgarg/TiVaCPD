@@ -518,11 +518,12 @@ class MMDATVGL_CPD():
 
         for k in range(len(ps)):
 
-            # average change in comparison to past 3 windows 
-            avg_ps=(ps[k-1] + ps[k-2] +ps[k-3])/3
+            # average change in comparison to past 2 windows 
+            avg_ps=(ps[k-1] + ps[k-2])/2
+
             a = ((ps[k])-avg_ps)
 
-            # Filter out noise
+            # Filter out noisy differences for cleaner interpretability plot
             a[abs(a)<0.1]=0
             a=np.tril(a, k=0)
 
@@ -531,12 +532,17 @@ class MMDATVGL_CPD():
                     if i!=j:
                         df[(j,i)][k] = a[i,j]
 
-            score = mat2vec(ps[k])-mat2vec(avg_ps)
-            #score[abs(score)<0.05] = 0
+            # Absolute differences between adjacent matrices 
+            score = mat2vec(abs(ps[k]))-mat2vec(abs(avg_ps))
+
+            # Filter out low-level noise in scores 
+            score[abs(score)<0.05] = 0
+
+            # Score Type 1: Take the sum of vector 
             max_x = sum(abs(score))
 
-            # Filter out noise
-            #score[abs(score) < 0.1] = 0 
+            # Score Type 2: Take the max or min of vector 
+            
             #if abs(score.min()) > abs(score.max()):
             #    max_x = score.min()
             #else:
@@ -545,6 +551,7 @@ class MMDATVGL_CPD():
             corr_score=np.concatenate((corr_score, np.repeat(max_x, 1)))
             corr_score=np.concatenate((corr_score, np.repeat(0, overlap-1)))
 
+        # Create interpretability heatmap
         new_index = pd.RangeIndex(len(df)*(1))
         new_df = pd.DataFrame(0.0, index=new_index, columns=df.columns)
         ids = np.arange(len(df))*(1)
@@ -570,6 +577,7 @@ class MMDATVGL_CPD():
             corr_score=corr_score[:len(data)]
         else:
             corr_score=np.concatenate((corr_score, np.zeros(int(data.shape[0]-len(corr_score)))))
+        
         # Min-max scaling 
         if not np.all((corr_score == 0)):
             corr_score /= np.max(np.abs(corr_score),axis=0)
