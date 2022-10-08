@@ -498,7 +498,7 @@ class MMDATVGL_CPD():
     def TVGL_(self, series, alpha, beta, penalty_type, slice_size, overlap, threshold, max_iters, data_path, sample):
         
         slice_size = int(slice_size) #min(int(len(series)*0.1), slice_size)
-
+        
         data = series
         model = TVGL(alpha, beta, penalty_type, slice_size, overlap=overlap, max_iters=max_iters)
 
@@ -507,46 +507,52 @@ class MMDATVGL_CPD():
         
         ps = model.precision_set
         col_names = []
+        col_names_proxy =[]
         for i in range(ps[0].shape[0]-1,-1,-1):
             for j in range(ps[0].shape[1]-1,-1,-1):
+                #unique col_names 
                 if i!=j:
-                    col_names.append((j,i))
+                    if (str(i), str(j)) not in col_names_proxy:
+                        col_names_proxy.append((str(j),str(i)))
+                        col_names.append((j,i))
 
-        df = pd.DataFrame(1.0, index=np.arange(len(data)), columns=col_names)
-
+        df = pd.DataFrame(0.0, index=np.arange(len(data)), columns=col_names)
         corr_score = np.asarray([])
 
         for k in range(len(ps)):
-
-            # average change in comparison to past 2 windows 
             avg_ps=(ps[k-1] + ps[k-2])/2
-
-            a = ((ps[k])-avg_ps)
-
+            a = (ps[k]-avg_ps)
+            
             # Filter out noisy differences for cleaner interpretability plot
             a[abs(a)<0.1]=0
+            
             a=np.tril(a, k=0)
 
             for i in range(a.shape[0]-1,-1,-1):
                 for j in range(a.shape[1]-1,-1,-1):
                     if i!=j:
-                        df[(j,i)][k] = a[i,j]
+                        if (str(j),str(i)) in col_names_proxy:
+                            if k>0:
+                                df[(j,i)][k] = a[i,j]
+                            else:
+                                df[(j,i)][k] = 0
 
             # Absolute differences between adjacent matrices 
-            score = mat2vec(abs(ps[k]))-mat2vec(abs(avg_ps))
-
-            # Filter out low-level noise in scores 
-            score[abs(score)<0.05] = 0
+            score = mat2vec(abs(ps[k]))-mat2vec(abs(ps[k-1]))
 
             # Score Type 1: Take the sum of vector 
             max_x = sum(abs(score))
 
             # Score Type 2: Take the max or min of vector 
-            
+
             #if abs(score.min()) > abs(score.max()):
             #    max_x = score.min()
             #else:
             #    max_x = score.max()
+
+            # Account for first window
+            if k < 1: 
+                max_x=0
 
             corr_score=np.concatenate((corr_score, np.repeat(max_x, 1)))
             corr_score=np.concatenate((corr_score, np.repeat(0, overlap-1)))
@@ -554,11 +560,18 @@ class MMDATVGL_CPD():
         # Create interpretability heatmap
         new_index = pd.RangeIndex(len(df)*(1))
         new_df = pd.DataFrame(0.0, index=new_index, columns=df.columns)
+        
         ids = np.arange(len(df))*(1)
+        
+        # Normalize values between -1 and 1 per column before plotting 
+        for c in range(len(df.columns)):
+            df[df.columns[c]] /= np.max(np.abs(df[df.columns[c]]),axis=0)
+            df[df.columns[c]]= df[df.columns[c]].fillna(0)
+
         new_df.loc[ids] = df.values
 
         sns.set_theme()
-        figure = plt.figure(figsize= (30,3))
+        figure = plt.figure(figsize= (30,4))
         new_df.loc[0] = 0
         r = max(abs(np.amin(new_df.values)), abs(np.amax(new_df.values)))
         vmin = -r
@@ -567,8 +580,10 @@ class MMDATVGL_CPD():
         
         ax = sns.heatmap(new_df.T, cmap="seismic", norm = norm)
         ax2 = ax.twinx()
-        ax2.plot(data, lw=2)
-        corr_score[0]=0
+        
+        asdf = pd.DataFrame(data)
+        ax2.plot(asdf, lw=2)
+        
         ax.tick_params(axis='x', rotation=90)
         ax2.tick_params(axis='x', rotation=90)
     
@@ -583,6 +598,7 @@ class MMDATVGL_CPD():
             corr_score /= np.max(np.abs(corr_score),axis=0)
         
         plt.legend()
+        ax2.legend(asdf.columns)
 
         if data_path !='':
             plt.savefig(os.path.join(data_path, ''.join(['CorrScore_interpretability_', str(sample), '.png'])))
