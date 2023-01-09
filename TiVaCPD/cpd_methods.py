@@ -326,19 +326,61 @@ class MMDA_CPD():
         self.l_minus=l_minus
         self.l_plus=l_plus
 
-        self.scores = self.dynamic_windowing(p_wnd_dim, f_wnd_dim, series, threshold, alpha, kernel_type, 
+        self.mmd_score, self.mmd_logit = self.dynamic_windowing(p_wnd_dim, f_wnd_dim, series, threshold, alpha, kernel_type, 
                                                     approx_type, B1, B2, B3, weights_type, l_minus, l_plus)
+        # self.mmd_score, self.mmd_logit = self.dynamic_windowing(p_wnd_dim, f_wnd_dim, series, threshold, alpha, kernel_type, 
+        #                                             approx_type, B1, B2, B3, weights_type, l_minus, l_plus)
+    # def dynamic_windowing(self, p_wnd_dim, f_wnd_dim, series, threshold, alpha, kernel_type, approx_type, B1, B2, B3, weight_type, l_minus, l_plus):
 
-    def dynamic_windowing(self, p_wnd_dim, f_wnd_dim, series, threshold, alpha, kernel_type,approx_type, B1, B2, B3, weight_type, l_minus, l_plus):
+    #     mmd_agg = np.asarray([])
+
+    #     run_length = int(p_wnd_dim)
+    #     i = int(p_wnd_dim)
+    #     f_wnd_dim = int(f_wnd_dim)
+    #     p_wnd_dim = int(p_wnd_dim)
+
+    #     while i <= len(series):
+    #         prev = series[max(int(i)-run_length,0):int(i), :]
+    #         next = series[max(int(i),0):int(i)+int(f_wnd_dim), :]
+
+    #         if next.shape[0]<=2 or prev.shape[0]<=2:
+    #             break
+
+    #         hyp = mmdagg(123, prev, next, alpha=alpha, kernel_type=kernel_type, approx_type=approx_type,weights_type=weight_type, l_minus=l_minus, l_plus=l_plus, 
+    #         B1 = B1, B2 = B2, B3 = B3)
+            
+    #         if hyp >=threshold:
+    #             run_length = p_wnd_dim
+    #             mmd_agg = np.concatenate((mmd_agg, np.repeat(hyp, 1)))
+    #         else:   
+    #             run_length += 1
+    #             mmd_agg = np.concatenate((mmd_agg, np.repeat(0, 1)))
+    #         i=i+1
+    #     #mmd_agg = np.absolute(mmd_agg)
+
+    #     # Min-max 
+    #     if not np.all((mmd_agg == 0)):
+    #         mmd_agg /= np.max(np.abs(mmd_agg),axis=0)
+
+    #     mmd_agg = np.concatenate((np.zeros(f_wnd_dim), mmd_agg))
+        
+    #     logit = (2./(1+np.exp(-3*(mmd_agg))))-1
+        
+        
+    #     return mmd_agg, logit
+
+    def dynamic_windowing(self, p_wnd_dim, f_wnd_dim, series, threshold, alpha, kernel_type, approx_type, B1, B2, B3, weight_type, l_minus, l_plus):
 
         mmd_agg = np.asarray([])
 
         run_length = int(p_wnd_dim)
-        i = p_wnd_dim
+        i = int(p_wnd_dim)
+        f_wnd_dim = int(f_wnd_dim)
+        p_wnd_dim = int(p_wnd_dim)
 
         while i <= len(series):
             prev = series[max(int(i)-run_length,0):int(i), :]
-            next = series[max(int(i),0):int(i)+f_wnd_dim, :]
+            next = series[max(int(i),0):int(i)+int(f_wnd_dim), :]
 
             if next.shape[0]<=2 or prev.shape[0]<=2:
                 break
@@ -347,17 +389,18 @@ class MMDA_CPD():
             B1 = B1, B2 = B2, B3 = B3)
             
             if hyp >=threshold:
-                mmd_agg = np.concatenate((mmd_agg, np.repeat(hyp, 1)))
                 run_length = p_wnd_dim
-                i+=1
+                mmd_agg = np.concatenate((mmd_agg, np.repeat(hyp, 1)))
             else:   
-                mmd_agg = np.concatenate((mmd_agg, np.repeat(0, 1)))             
-                mmd_agg = np.concatenate((mmd_agg, np.repeat(0, f_wnd_dim-1)))
-                run_length += p_wnd_dim
-                i += f_wnd_dim
+                run_length += 1
+                mmd_agg = np.concatenate((mmd_agg, np.repeat(0, 1)))
+            i = i+1
+            
+        mmd_agg = np.concatenate((np.zeros(f_wnd_dim), mmd_agg))
 
+        logit = (2./(1+np.exp(-3*(mmd_agg))))-1
 
-        return np.concatenate((np.zeros(p_wnd_dim), mmd_agg))  
+        return mmd_agg, logit  
 
     def visualize_results(self, series, scores, gt_cov, gt_mean, gt_var, label):
 

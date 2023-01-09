@@ -72,7 +72,9 @@ def main():
             pkl.dump((model.scores), f)
 
     elif args.model_type == 'MMDA_CPD':
+        print('start MMDA_CPD')
         model = MMDA_CPD(X, threshold=args.threshold, p_wnd_dim=args.p_wnd_dim, f_wnd_dim=args.f_wnd_dim)
+        print('finish model')
         plt = model.visualize_results(X, model.scores, gt_corr, gt_mean, gt_var, 'mmda')
         plt.savefig(os.path.join(exp_path, 'cpd_mmda.png')) 
         with open(os.path.join(exp_path, 'mmda_score.pkl'),'wb') as f:
