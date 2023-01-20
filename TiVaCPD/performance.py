@@ -102,15 +102,16 @@ class ComputeMetrics():
         if self.process:
             if not np.all((y_pred == 0)):
                 y_pred = self.post_processing(y_pred, threshold)
+                #first few and last few peaks are FPs so set those to 0
                 y_pred[0:5] = 0 
                 y_pred[len(y_pred)-5:len(y_pred)] = 0
-
 
         # given ground truth sequence of labels, and real labels, computes precision, recall and f1 score assuming leniancy of (window)
         l = len(y_true)
         window = int(window)
         # Compute precision
         tp=0
+        
         totalLabel = np.sum(y_pred)
 
         estimatedCP = np.argwhere(y_pred==1).tolist()
