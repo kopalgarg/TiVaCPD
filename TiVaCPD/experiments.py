@@ -21,6 +21,7 @@ from scipy.signal import savgol_filter
 import warnings
 from scipy.signal import peak_prominences
 from pyampd.ampd import find_peaks, find_peaks_adaptive
+import ruptures as rpt
 
 def save_data(path, array):
     with open(path,'wb') as f:
@@ -153,50 +154,57 @@ def main():
             
             model = MMDATVGL_CPD(X, max_iters = args.max_iters, overlap=args.overlap, alpha = 0.001, threshold = args.threshold, f_wnd_dim = args.f_wnd_dim, p_wnd_dim = args.p_wnd_dim, data_path = data_path, sample = i, slice_size=args.slice_size) 
 
-            mmd_score = shift(model.mmd_score, args.p_wnd_dim)
+            mmd_score = model.mmd_score #shift(model.mmd_score, args.p_wnd_dim)
             corr_score = model.corr_score
-
+            
             minLength = min(len(mmd_score), len(corr_score)) 
             corr_score = (corr_score)[:minLength]
-            mmd_score = mmd_score[:minLength]
-            combined_score = np.add(abs(mmd_score), abs(corr_score))
+            mmd_score = mmd_score[:minLength] 
+            combined_score = np.add(abs(mmd_score), abs(corr_score)) 
             y_true = y_true[:minLength]
-            
 
             # processed combined score
+
+            mmd_score_savgol  = mmd_score #savgol_filter(mmd_score, 11, 1)  
+            corr_score_savgol = savgol_filter(corr_score, 7, 1) 
             
-            mmd_score_savgol  = savgol_filter(mmd_score, 11, 1) 
-            corr_score_savgol = savgol_filter(corr_score, 11,1) 
+            #if not np.all((mmd_score_savgol == 0)):
+            #    mmd_score_savgol /= np.max(np.abs(mmd_score_savgol),axis=0)
+            #if not np.all((corr_score_savgol == 0)):
+            #    corr_score_savgol /= np.max(np.abs(corr_score_savgol),axis=0)
             
-            combined_score_savgol  = savgol_filter(np.add(abs(mmd_score_savgol), abs(corr_score_savgol)), 7,   1)
+            combined_score_savgol  = savgol_filter(np.add(abs(mmd_score_savgol), abs(corr_score_savgol)), 11,   1) 
+
+            if not np.all((combined_score_savgol == 0)):
+                combined_score_savgol /= np.max(np.abs(combined_score_savgol),axis=0)
             
             # save intermediate results
-        
             if not os.path.exists(args.out_path): 
-                os.mkdir(args.out_path)
+                os.mkdir(args.out_path) 
             if not os.path.exists(data_path): 
-                os.mkdir(data_path)
+                os.mkdir(data_path) 
 
-            save_data(os.path.join(data_path, ''.join(['series_', str(i), '.pkl'])), X)
-            save_data(os.path.join(data_path, ''.join(['y_true_', str(i), '.pkl'])), y_true)
-            save_data(os.path.join(data_path, ''.join(['mmd_score_', str(i), '.pkl'])), mmd_score)
+            save_data(os.path.join(data_path, ''.join(['series_', str(i), '.pkl'])), X) 
+            save_data(os.path.join(data_path, ''.join(['y_true_', str(i), '.pkl'])), y_true) 
+            save_data(os.path.join(data_path, ''.join(['mmd_score_', str(i), '.pkl'])), mmd_score) 
             save_data(os.path.join(data_path, ''.join(['corr_score_', str(i), '.pkl'])), corr_score)
 
-            y_pred = abs(mmd_score)
+        
+            y_pred = mmd_score
             metrics = ComputeMetrics(y_true, y_pred, args.margin)
             print("DistScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
-            y_pred = abs(corr_score)
-            metrics = ComputeMetrics(y_true, abs(y_pred), args.margin)
+            y_pred = corr_score
+            metrics = ComputeMetrics(y_true, y_pred, args.margin)
             print("CorrScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
-            y_pred = abs(combined_score)
+            y_pred = combined_score
             metrics= ComputeMetrics(y_true, y_pred, args.margin)
-            print("EnsembleScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
+            print("EnsembleScore:", "AUC:", np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
             print("Processed:")
 
-            y_pred = abs(mmd_score_savgol)
+            y_pred = mmd_score_savgol
             metrics = ComputeMetrics(y_true, y_pred, args.margin)
             auc_scores_mmdagg.append(metrics.auc)
             f1_scores_mmdagg.append(metrics.f1) 
@@ -204,7 +212,7 @@ def main():
             recall_scores_mmdagg.append(metrics.recall)
             print("DistScore:", "AUC:", np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
-            y_pred = abs(corr_score_savgol)
+            y_pred = corr_score_savgol
             metrics = ComputeMetrics(y_true, y_pred, args.margin)
             auc_scores_correlation.append(metrics.auc)
             f1_scores_correlation.append(metrics.f1) 
@@ -222,6 +230,7 @@ def main():
             print("EnsembleScore:", "AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
             peaks=metrics.peaks
             
+            plt.figure(figsize= (30,3))
             plt.plot(X)
             plt.plot(y_true, label = 'y_true')
             plt.legend()
@@ -229,6 +238,7 @@ def main():
             plt.savefig(os.path.join(data_path, ''.join(['X_', str(i), '.png'])))
             plt.clf()
 
+            plt.figure(figsize= (30,3))
             plt.plot(mmd_score_savgol, label = 'mmd_score_savgol')
             plt.plot(corr_score_savgol, label = 'corr_score_savgol')
             plt.plot(combined_score_savgol, label = 'combined_score_savgol')
@@ -238,9 +248,7 @@ def main():
             plt.savefig(os.path.join(data_path, ''.join(['TiVaCPD_score_components_', str(i), '.png'])))
             plt.clf()
 
-            plt.plot(mmd_score_savgol, label = 'mmd_score_savgol')
-            plt.plot(corr_score_savgol, label = 'corr_score_savgol')
-            plt.plot(combined_score_savgol, label = 'combined_score_savgol')
+            plt.figure(figsize= (30,3))
             plt.plot(y_true, label = 'y_true')
             plt.plot(peaks, label = 'peaks')
             plt.legend()
@@ -269,6 +277,7 @@ def main():
             peaks = metrics.peaks
             print("AUC:",np.round(metrics.auc, 2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
             
+            plt.figure(figsize= (30,3))
             plt.plot(X)
             plt.plot(y_true, label = 'y_true')
             plt.legend()
@@ -276,6 +285,7 @@ def main():
             plt.savefig(os.path.join(data_path, ''.join(['X_', str(i), '.png'])))
             plt.clf()
 
+            plt.figure(figsize= (30,3))
             plt.plot(y_pred, label = 'graphtime')
             plt.plot(y_true, label = 'y_true')
             plt.legend()
@@ -283,6 +293,8 @@ def main():
             plt.savefig(os.path.join(data_path, ''.join(['GRAPHTIME_score_', str(i), '.png'])))
             plt.clf()
 
+
+            plt.figure(figsize= (30,3))
             plt.plot(y_true, label = 'y_true')
             plt.plot(peaks, label = 'peaks')
             plt.legend()
@@ -314,6 +326,7 @@ def main():
 
             print("AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
+            plt.figure(figsize= (30,3))
             plt.plot(X)
             plt.plot(y_true, label = 'y_true')
             plt.legend()
@@ -321,6 +334,7 @@ def main():
             plt.savefig(os.path.join(data_path, ''.join(['X_', str(i), '.png'])))
             plt.clf()
 
+            plt.figure(figsize= (30,3))
             plt.plot(y_pred, label = 'KLCPD')
             plt.plot(y_true, label = 'y_true')
             plt.legend()
@@ -328,6 +342,7 @@ def main():
             plt.savefig(os.path.join(data_path, ''.join(['KLCPD_score_', str(i), '.png'])))
             plt.clf()
             
+            plt.figure(figsize= (30,3))
             plt.plot(y_true, label = 'y_true')
             plt.plot(peaks, label = 'peaks')
             plt.legend()
@@ -359,7 +374,7 @@ def main():
             peaks =metrics.peaks
             print("AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
-
+            plt.figure(figsize= (30,3))
             plt.plot(X)
             plt.plot(y_true, label = 'y_true')
             plt.legend()
@@ -367,6 +382,7 @@ def main():
             plt.savefig(os.path.join(data_path, ''.join(['X_', str(i), '.png'])))
             plt.clf()
 
+            plt.figure(figsize= (30,3))
             plt.plot(y_pred, label = 'roerich')
             plt.plot(y_true, label = 'y_true')
             plt.legend()
@@ -374,6 +390,8 @@ def main():
             plt.savefig(os.path.join(data_path, ''.join(['roerich_score_', str(i), '.png'])))
             plt.clf()
 
+
+            plt.figure(figsize= (30,3))
             plt.plot(y_true, label = 'y_true')
             plt.plot(peaks, label = 'peaks')
             plt.legend()
@@ -393,7 +411,7 @@ def main():
             X = X_samples[i]
 
             n_samples = X.shape[0]
-            algo = rpt.Pelt(model="linear").fit(X)
+            algo = rpt.Pelt(model="rbf").fit(X)
             result = algo.predict(pen=10)
 
             y_pred=np.zeros(X.shape[0]+1)
@@ -410,7 +428,7 @@ def main():
             peaks = metrics.peaks
             print("AUC:",np.round(metrics.auc,2), "F1:",np.round(metrics.f1,2), "Precision:", np.round(metrics.precision,2), "Recall:",np.round(metrics.recall,2))
 
-
+            plt.figure(figsize= (30,3))
             plt.plot(X)
             plt.plot(y_true, label = 'y_true')
             plt.legend()
@@ -418,6 +436,7 @@ def main():
             plt.savefig(os.path.join(data_path, ''.join(['X_', str(i), '.png'])))
             plt.clf()
 
+            plt.figure(figsize= (30,3))
             plt.plot(y_true, label = 'y_true')
             plt.plot(y_pred, label = 'y_pred')
             plt.legend()
@@ -425,6 +444,7 @@ def main():
             plt.savefig(os.path.join(data_path, ''.join(['ruptures_score_', str(i), '.png'])))
             plt.clf()
 
+            plt.figure(figsize= (30,3))
             plt.plot(y_true, label = 'y_true')
             plt.plot(peaks, label = 'peaks')
             plt.legend()
@@ -450,8 +470,8 @@ def main():
 
         print("auc_scores_correlation_CI", mean_confidence_interval(auc_scores_correlation))
         print("f1_scores_correlation_CI", mean_confidence_interval(f1_scores_correlation))
-        print("precision_scores_correlation_CI", mean_confidence_interval(precision_scores_combined))
-        print("recall_scores_correlation_CI", mean_confidence_interval(recall_scores_combined))
+        print("precision_scores_correlation_CI", mean_confidence_interval(precision_scores_correlation))
+        print("recall_scores_correlation_CI", mean_confidence_interval(recall_scores_correlation))
 
         print("auc_scores_mmdagg_CI", mean_confidence_interval(auc_scores_mmdagg))
         print("f1_scores_mmdagg_CI", mean_confidence_interval(f1_scores_mmdagg))
@@ -480,7 +500,7 @@ if __name__=='__main__':
     parser.add_argument('--model_type', default = 'MMDATVGL_CPD')
     parser.add_argument('--score_type', default='combined') # others: combined, correlation, mmdagg
     parser.add_argument('--margin', default = 5)
-    parser.add_argument('--slice_size', default = 10)
+    parser.add_argument('--slice_size', default = 7)
 
     args = parser.parse_args()
 
