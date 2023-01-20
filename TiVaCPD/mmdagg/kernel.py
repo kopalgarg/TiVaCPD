@@ -76,54 +76,6 @@ def kernel_matrices(X, Y, kernel_type, bandwidth, bandwidth_multipliers):
             'The value of kernel_type should be either "gaussian" or "laplace"'
         )
 
-def normalized_kernel_matrices(X, Y, kernel_type, bandwidth, bandwidth_multipliers):
-    """
-    Compute normalized kernel matrices for several bandwidths.
-    inputs: kernel_type: "gaussian" or "laplace"
-            X is (m,d) array (m d-dimensional points)
-            Y is (n,d) array (n d-dimensional points)
-            bandwidth is (d,) array
-            bandwidth_multipliers is (N,) array such that: 
-                collection_bandwidths = [c*bandwidth for c in bandwidth_multipliers]
-            kernel_type: "gaussian" or "laplace" (as defined in Section 5.3 of our paper)
-    outputs: list of N normalized kernel matrices for the pooled sample with the N bandwidths
-    """
-    m, d = X.shape
-    Z = np.concatenate((X / bandwidth, Y / bandwidth))
-    Z_XX = np.concatenate((X / bandwidth, X / bandwidth))
-    Z_YY = np.concatenate((Y / bandwidth, Y / bandwidth))
-
-    if kernel_type == "gaussian":
-        pairwise_sq_l2_dists = pairwise_square_l2_distance(Z) 
-        pairwise_sq_l2_dists_Z_XX = pairwise_square_l2_distance(Z_XX) 
-        pairwise_sq_l2_dists_Z_YY = pairwise_square_l2_distance(Z_YY) 
-        output_list = []
-        for c in bandwidth_multipliers:
-            kernel = np.exp(-pairwise_sq_l2_dists / (c ** 2))
-            kernel_XX=np.exp(-pairwise_sq_l2_dists_Z_XX / (c ** 2))
-            kernel_YY=np.exp(-pairwise_sq_l2_dists_Z_YY / (c ** 2))
-            import pdb; pdb.set_trace()
-            normalized_kernel = kernel/np.mean(kernel_XX, kernel_YY)
-            output_list.append(normalized_kernel) 
-        return output_list
-    elif kernel_type == "laplace":
-        pairwise_l1_dists = pairwise_l1_distance(Z) 
-        pairwise_l1_dists_Z_XX = pairwise_l1_distance(Z_XX) 
-        pairwise_l1_dists_Z_YY = pairwise_l1_distance(Z_YY) 
-        output_list = []
-        for c in bandwidth_multipliers:
-            kernel = np.exp(-pairwise_l1_dists / c)
-            kernel_XX = np.exp(-pairwise_l1_dists_Z_XX / c)
-            kernel_YY = np.exp(-pairwise_l1_dists_Z_YY / c)
-            import pdb; pdb.set_trace()
-            normalized_kernel = kernel/np.mean(kernel_XX, kernel_YY)
-            output_list.append(normalized_kernel) 
-        return output_list
-    else:
-        raise ValueError(
-            'The value of kernel_type should be either "gaussian" or "laplace"'
-        )
-
 @njit
 def mutate_K(K, approx_type):
     """
