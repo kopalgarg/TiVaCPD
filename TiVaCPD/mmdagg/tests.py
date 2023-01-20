@@ -1,7 +1,7 @@
 import numpy as np
 from median import compute_median_bandwidth_subset
 from weights import create_weights
-from kernel import kernel_matrices, mutate_K, normalized_kernel_matrices
+from kernel import kernel_matrices, mutate_K
 from generalizedMean import *
 
 #  - normalized kernel, MMD scoring updates 
