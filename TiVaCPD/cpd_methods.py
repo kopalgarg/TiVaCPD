@@ -34,6 +34,9 @@ sys.path.insert(1, 'other_methods/graphtime')
 from graphtime import GroupFusedGraphLasso
 from utils import get_change_points, plot_data_with_cps
 
+def save_data(path, array):
+    with open(path,'wb') as f:
+        pkl.dump(array, f)
 # KS-Test with Bonferroni Correction Change Point Detection
 class KSTB_CPD():
     def __init__(self, series:np.array, p_wnd_dim:int=25, f_wnd_dim:int=25, threshold:int=.05):
@@ -464,8 +467,10 @@ class MMDATVGL_CPD():
         # Min-max 
         if not np.all((mmd_agg == 0)):
             mmd_agg /= np.max(np.abs(mmd_agg),axis=0)
-
-        mmd_agg = np.concatenate((np.zeros(f_wnd_dim), mmd_agg))
+        
+        mmd_agg = np.concatenate((np.zeros(p_wnd_dim), mmd_agg))
+        if len(mmd_agg)<len(series):
+            mmd_agg = np.concatenate((mmd_agg, np.zeros(len(series)-len(mmd_agg))))
         
         logit = (2./(1+np.exp(-3*(mmd_agg))))-1
         
@@ -505,6 +510,7 @@ class MMDATVGL_CPD():
         model.fit(series)
         # set of precision matrices
         
+        
         ps = model.precision_set
         col_names = []
         col_names_proxy =[]
@@ -527,7 +533,7 @@ class MMDATVGL_CPD():
             a[abs(a)<0.1]=0
             
             a=np.tril(a, k=0)
-
+            
             for i in range(a.shape[0]-1,-1,-1):
                 for j in range(a.shape[1]-1,-1,-1):
                     if i!=j:
@@ -538,6 +544,7 @@ class MMDATVGL_CPD():
                                 df[(j,i)][k] = 0
 
             # Absolute differences between adjacent matrices 
+            #score  = abs(mat2vec((ps[k]))-mat2vec((ps[k-1])))
             score = mat2vec(abs(ps[k]))-mat2vec(abs(ps[k-1]))
 
             # Score Type 1: Take the sum of vector 
@@ -562,17 +569,18 @@ class MMDATVGL_CPD():
         new_df = pd.DataFrame(0.0, index=new_index, columns=df.columns)
         
         ids = np.arange(len(df))*(1)
-        
+        #df /= np.max(np.abs(df),axis=0)
         # Normalize values between -1 and 1 per column before plotting 
-        for c in range(len(df.columns)):
-            df[df.columns[c]] /= np.max(np.abs(df[df.columns[c]]),axis=0)
-            df[df.columns[c]]= df[df.columns[c]].fillna(0)
+        #import pdb; pdb.set_trace()
+        #for c in range(len(df.columns)):
+        #    df[df.columns[c]] /= np.max(np.abs(df[df.columns[c]]),axis=0)
+        #    df[df.columns[c]]= df[df.columns[c]].fillna(0)
 
         new_df.loc[ids] = df.values
 
         sns.set_theme()
         figure = plt.figure(figsize= (30,4))
-        new_df.loc[0] = 0
+        new_df.loc[0:1] = 0
         r = max(abs(np.amin(new_df.values)), abs(np.amax(new_df.values)))
         vmin = -r
         vmax = r
@@ -602,6 +610,7 @@ class MMDATVGL_CPD():
 
         if data_path !='':
             plt.savefig(os.path.join(data_path, ''.join(['CorrScore_interpretability_', str(sample), '.png'])))
+            save_data(os.path.join(data_path, ''.join(['CorrScore_interpretability_Matrix_', str(sample), '.pkl'])), new_df)
         else:
             plt.show()
         
