@@ -48,16 +48,6 @@ def load_HAR(data_path, ind):
 def rmdiag(m):
     return m - np.diag(np.diag(m))
 
-def random_corrmat(K):
-    
-    x = np.random.randint(-1,2, size=(K, K))
-    #np.random.randn(K, K)
-    #x = x * x.T
-    #x /= np.max(np.abs(x))
-    np.fill_diagonal(x, 1.)
-    
-    return x
-
 def mat2vec(m):
     """
     Function that converts correlation matrix to a vector
