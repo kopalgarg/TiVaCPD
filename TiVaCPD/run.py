@@ -16,6 +16,8 @@ import fnmatch,os
 import pickle as pkl
 from scipy.signal import savgol_filter
 import ruptures as rpt
+from sklearn import preprocessing
+
 
 def save_data(path, array):
     with open(path,'wb') as f:
@@ -45,6 +47,7 @@ def main():
     for i in range(0, len(X_samples)):
         
         print(i)
+
         if args.model_type == 'MMDATVGL_CPD':
 
             data_path = os.path.join(args.out_path, args.exp)
@@ -84,13 +87,23 @@ def main():
             save_data(os.path.join(data_path, ''.join(['mmd_score_', str(i), '.pkl'])), mmd_score)
             save_data(os.path.join(data_path, ''.join(['corr_score_', str(i), '.pkl'])), corr_score)
 
-        elif args.model_type == 'KLCPD':
+        elif args.model_type == 'MMDA_CPD':
+            data_path = os.path.join(args.out_path, args.exp)
+
             X = X_samples[i]
-            model = KLCPD(X, p_wnd_dim=args.p_wnd_dim, f_wnd_dim=args.f_wnd_dim, epochs=20)
-            y_pred = model.scores
-            plt.plot(y_pred)
-            plt.plot(X)
-            plt.show()
+            print(X.shape)
+                        
+            model = MMDA_CPD(X, threshold=args.threshold, p_wnd_dim=args.p_wnd_dim, f_wnd_dim=args.f_wnd_dim)
+            mmd_score = shift(model.mmd_score, args.p_wnd_dim)
+            print(mmd_score.shape)
+            print(model.mmd_score.shape)
+
+            plt.figure(figsize= (30,3))
+            f, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+            ax1.plot(X)
+            ax2.plot(model.mmd_score, label = 'mmda')
+            ax2.legend(loc="upper right")
+            plt.savefig(os.path.join(data_path, ''.join([prefix, '_cpd_mmda', str(i), '.png'])))
 
             data_path = os.path.join(args.out_path, args.exp)
             if not os.path.exists(args.out_path): 
@@ -98,6 +111,27 @@ def main():
             if not os.path.exists(data_path): 
                 os.mkdir(data_path)
 
+            save_data(os.path.join(data_path,''.join([prefix, '_series_', str(i), '.pkl'])), X)
+            save_data(os.path.join(data_path, ''.join([prefix, '_mmd_score_', str(i), '.pkl'])), mmd_score)
+
+        elif args.model_type == 'KLCPD':
+            X = X_samples[i]
+            model = KLCPD(X, p_wnd_dim=args.p_wnd_dim, f_wnd_dim=args.f_wnd_dim, epochs=20)
+            y_pred = model.scores
+
+            data_path = os.path.join(args.out_path, args.exp)
+
+            plt.figure(figsize= (30,3))
+            f, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+            ax1.plot(X)
+            ax2.plot(y_pred, label = 'klcpd')
+            ax2.legend(loc="upper right")
+            plt.savefig(os.path.join(data_path, ''.join(['klcpd_mmda', str(i), '.png'])))
+
+            if not os.path.exists(args.out_path): 
+                os.mkdir(args.out_path)
+            if not os.path.exists(data_path): 
+                os.mkdir(data_path)
             save_data(os.path.join(data_path, ''.join(['series_', str(i), '.pkl'])), X)
             save_data(os.path.join(data_path, ''.join(['klcpd_score_', str(i), '.pkl'])), y_pred)
 

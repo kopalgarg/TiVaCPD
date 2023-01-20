@@ -1,0 +1,4 @@
+TiVaCPD/out/*
+TiVaCPD/__pycache__/*
+TiVaCPD/mmdagg/__pycache__/*
+TiVaCPD/data/bump_test/*
